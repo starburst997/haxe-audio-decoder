@@ -1,0 +1,6 @@
+-lib sound-decoder
+-lib multiloader
+-cp Source
+-js Server/js/TestOGG.js
+-main Main
+

@@ -1,0 +1,13 @@
+{
+	"name" : "sound-decoder",
+	"url" : "",
+	"license" : "",
+  "description" : "Library to provide an interface to decode MP3 / OGG.",
+  "version" : "0.0.1",
+  "classPath": "src/",
+	"releasenote" : "",
+	"contributors" : ["starburst997"],
+	"dependencies" : {
+    "stb_ogg_sound": ""
+  }
+}

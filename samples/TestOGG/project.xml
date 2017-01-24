@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+
+	<meta title="Test OGG" package="com.failsafegames.testogg" version="1.0.0" company="FailSafe Games" />
+
+  <window width="800" height="600" background="#FFFFFF" fps="61" />
+  <window width="0" height="0" if="mobile" />
+  <window width="0" height="0" if="html5" />
+
+	<app main="MainOpenFL" path="Export" file="TestOGG" />
+
+	<source path="Source" />
+
+	<haxelib name="openfl" />
+  <haxelib name="stats" />
+  <haxelib name="multiloader" />
+	<haxelib name="sound-decoder" />
+
+	<assets path="Assets" rename="assets" />
+
+  <config:ios deployment="6.0" />
+
+</project>
