@@ -1,5 +1,10 @@
 package;
 
+import haxe.io.Bytes;
+import haxe.io.BytesInput;
+import haxe.io.BytesOutput;
+import multiloader.MultiLoader;
+
 // Tests
 enum Tests
 {
@@ -15,6 +20,12 @@ enum Tests
  */
 class TestOGG
 {
+  // Ogg File
+  private var ogg:OggDecoder;
+  
+  // Decoded Ogg File (16bit Samples / 2 Channels)
+  private var raw:BytesOutput;
+  
   // List of files
   public static inline var PATH:String = "./assets/";
   public static inline var TEST1:String = PATH + "test1.ogg";
@@ -31,10 +42,43 @@ class TestOGG
       case LoadURL1: loadURL1();
     }
   }
+  
+  // Enhance trace() with timing information
+  static inline function traceTimer()
+  {
+    var timer:Float = 0;
+    var oldTrace = haxe.Log.trace; // store old function
+    haxe.Log.trace = function(v, infos) 
+    {
+      
+      
+      oldTrace(v, infos);
+    };
+  }
 
   // Simply load a URL and do nothing else
   function loadURL1()
   {
-
+    MultiLoader.loadBytes(
+    { 
+      url: TEST1, 
+      complete: function(bytes)
+      {
+        trace("Downloading complete");
+        
+        // Create 
+        raw = new BytesOutput();
+        ogg = new OggDecoder( bytes, raw );
+        
+        trace("");
+        
+        // Read X samples
+        //ogg.readSamples(0, 4000);
+      },
+      error: function(error)
+      {
+        trace("Error", error);
+      }
+    });
   }
 }

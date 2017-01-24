@@ -1,7 +1,7 @@
 {
 	"name" : "sound-decoder",
-	"url" : "",
-	"license" : "",
+	"url" : "https://github.com/starburst997/haxe-sound-decoder",
+	"license" : "MIT",
   "description" : "Library to provide an interface to decode MP3 / OGG.",
   "version" : "0.0.1",
   "classPath": "src/",
