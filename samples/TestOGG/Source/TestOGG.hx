@@ -1,7 +1,7 @@
 package;
 
 import multiloader.MultiLoader;
-import sound.decoder.ogg.OggDecoder;
+import sound.decoder.OggDecoder;
 import trace.TraceTimer;
 
 // Tests
@@ -106,12 +106,15 @@ class TestOGG
         // Trace Bytes
         var str = "";
         var n = (end - start) + 10; // Add some padding, should be 0
+        
+        ogg.startSample(0);
         for ( i in 0...n )
         {
           str = "";
           for ( j in 0...ogg.channels )
           {
-            str += (j == 0 ? "" : " / ") + ogg.getSample(i, j);
+            //str += (j == 0 ? "" : " / ") + ogg.getSample(i, j);
+            str += (j == 0 ? "" : " / ") + ogg.nextSample();
           }
           
           trace( i, str );
@@ -139,14 +142,18 @@ class TestOGG
         
         // Read X samples
         trace("");
-        var start = 0;
-        var end = ogg.length;
-        ogg.decode(start, end);
-        
-        trace('Read ${end - start} samples:');
-        
-        // Save WAV
-        
+        ogg.decodeAll(function()
+        {
+          trace('Read ${ogg.length} samples');
+          
+          // Save WAV
+          var wav = ogg.getWAV();
+          trace('Wav Decoded');
+          
+          #if js
+          
+          #end
+        });
       },
       error: function(error)
       {

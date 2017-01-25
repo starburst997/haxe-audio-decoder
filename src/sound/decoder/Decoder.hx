@@ -1,8 +1,6 @@
-package sound.decoder.ogg;
+package sound.decoder;
 
 import haxe.io.Bytes;
-
-import stb.format.vorbis.Reader;
 
 // Chunk
 private typedef Chunk = 
@@ -21,14 +19,14 @@ private class BytesOutput extends haxe.io.Output
 	var bytes : haxe.io.Bytes;
 	var position : Int;
 	#if flash
-	var m : hxd.impl.Memory.MemoryReader;
+	var m : sound.decoder.Memory.MemoryReader;
 	#end
 
 	public function new( bytes:Bytes ) 
   {
     this.bytes = bytes;
 		#if flash
-		m = hxd.impl.Memory.select(bytes);
+		m = sound.decoder.Memory.select(bytes);
 		#end
 	}
 
@@ -63,25 +61,25 @@ private class BytesOutput extends haxe.io.Output
 }
 
 /**
- * Simple interface to stb_ogg_sound
- * 
- * Progressively decode the OGG by requesting range
- * 
- * https://github.com/motion-twin/haxe_stb_ogg_sound (Motion Twin fork)
+ * Abstract for MP3 / OGG Decoder
  */
-class OggDecoder 
+class Decoder 
 {
   // Performance
+  #if decode_float
+  public static inline var USE_FLOAT:Bool = true;
+  public static inline var BPS:Int = 4;
+  #else
   public static inline var USE_FLOAT:Bool = false;
-  
-  // Stb OGG
-  var reader:Reader;
+  public static inline var BPS:Int = 2;
+  #end
   
   // Decoded Bytes in 16bit per sample
   public var decoded:Bytes;
   private var output:BytesOutput;
+  private var position:Int = 0;
   
-  // Keep track of decoded chunk
+  // Keep track of decoded chunk (DLL)
   var chunks:Chunk;
   
   // Properties
@@ -89,24 +87,22 @@ class OggDecoder
   public var channels:Int = 2;
   public var sampleRate:Int = 44100;
   
-  // Bytes per sample (16 Bits)
-  private var bps:Int = USE_FLOAT ? 4 : 2;
+  // Bytes per sample (16 Bits or Float 32 Bits)
+  private var bps:Int = BPS;
   
   // Constructor
-  public function new( bytes:Bytes ) 
+  public function new( length:Int, channels:Int, sampleRate:Int ) 
   {
-    reader = Reader.openFromBytes(bytes);
-    
-    length = reader.totalSample;
-    channels = reader.header.channel;
-    sampleRate = reader.header.sampleRate;
+    this.length = length;
+    this.channels = channels;
+    this.sampleRate = sampleRate;
     
     // Create Bytes big enough to hold the decoded bits
-    decoded = Bytes.alloc(length * bps * channels);
+    decoded = Bytes.alloc(length * BPS * channels);
     output = new BytesOutput(decoded);
     
     // We now have one big non-decoded chunk
-    chunks  = {
+    chunks = {
       decoded: false,
       start: 0,
       end: length,
@@ -172,50 +168,131 @@ class OggDecoder
     return chunkString(str, chunk.next, n, m);
   }
   
+  // Mostly usefull for debug, save decoded Bytes to WAV Bytes (16bits)
+  public function getWAV()
+  {
+    var bitsPerSample = 16;
+    var byteRate = Std.int(channels * sampleRate * bitsPerSample / 8);
+    var blockAlign = Std.int(channels * bitsPerSample / 8);
+    var dataLength = length * channels * 2;
+    
+    var output = new haxe.io.BytesOutput();
+    output.bigEndian = false;
+    output.writeString("RIFF");
+    output.writeInt32(36 + dataLength);
+    output.writeString("WAVEfmt ");
+    output.writeInt32(16);
+    output.writeUInt16(1);
+    output.writeUInt16(channels);
+    output.writeInt32(sampleRate);
+    output.writeInt32(byteRate);
+    output.writeUInt16(blockAlign);
+    output.writeUInt16(bitsPerSample);
+    output.writeString("data");
+    output.writeInt32(dataLength);
+    
+    // Read Samples one after another (testing actual float conversion also)
+    startSample(0);
+    var n = length * channels, ival:Int;
+    for ( i in 0...n )
+    {
+      ival = Std.int(nextSample() * 0x8000);
+      if( ival > 0x7FFF ) ival = 0x7FFF;
+      output.writeByte(ival & 0xFF);
+      output.writeByte((ival >>> 8) & 0xFF);
+      
+      // Could this work? Faster?
+      //output.writeInt16( nextSample() * 32767 );
+    }
+    
+    return output.getBytes();
+  }
+  
   // Get a sample
   public inline function getSample(pos:Int, channel:Int)
   {
-    if ( USE_FLOAT )
+    /*if ( USE_FLOAT )
     {
       return getSampleF(pos, channel);
     }
     else
     {
       return getSample16(pos, channel);
-    }
+    }*/
+    
+    #if decode_float
+    return getSampleF(pos, channel);
+    #else
+    return getSample16(pos, channel);
+    #end
   }
   
   // 16 Bit
+  private inline function sext16(v:Int) 
+  {
+    return (v & 0x8000) == 0 ? v : v | 0xFFFF0000;
+  }
   public inline function getSample16(pos:Int, channel:Int)
   {
-    inline function sext16(v:Int) {
-      return (v & 0x8000) == 0 ? v : v | 0xFFFF0000;
-    }
-    
-    return sext16(decoded.getUInt16( ((pos * channels) << 1) + (channel << 1) )) / 0x8000;
+    return sext16(decoded.getUInt16( (pos * channels + channel) << 1 )) / 0x8000;
   }
   
   // Float
   public inline function getSampleF(pos:Int, channel:Int)
   {
-    return decoded.getFloat( ((pos * channels) << 2) + (channel << 2) );
+    return decoded.getFloat( (pos * channels + channel) << 2 );
   }
   
-  // Read samples inside the OGG
+  // Start Sample
+  public inline function startSample(pos:Int)
+  {
+    #if decode_float
+    position = (pos * channels - 1) << 2;
+    #else
+    position = (pos * channels - 1) << 1;
+    #end
+  }
+  
+  // Nest Sample
+  public inline function nextSample()
+  {
+    #if decode_float
+    return decoded.getFloat( position += 4 );
+    #else
+    return sext16(decoded.getUInt16( position += 2 )) / 0x8000;
+    #end
+  }
+  
+  // Read samples inside the decoder
   private function read(start:Int, end:Int)
   {
-    // Start
-    reader.currentSample = start;
+    // Override me ;)
+  }
+  
+  // Read all samples
+  private function readAll( handler:Void->Void = null )
+  {
+    // Simply call read, but this could be override for specific target like JS with AudioContext
+    read(0, length);
     
-    // 16 Bits
-    output.setPosition( start * bps * channels );
+    // Call handler
+    if ( handler != null ) handler();
+  }
+  
+  // Decode all the samples, in one shot
+  public function decodeAll( handler:Void->Void = null )
+  {
+    // We now have one big decoded chunk
+    chunks = {
+      decoded: true,
+      start: 0,
+      end: length,
+      next: null,
+      previous: null
+    };
     
-    // Read into output
-    var n = reader.read(output, end - start, channels, sampleRate, USE_FLOAT);
-    output.done();
-    
-    // Debug
-    trace("Read", start, end, n);
+    // Read in one shot
+    readAll( handler );
   }
   
   // Makes sure this range is decoded
@@ -246,7 +323,8 @@ class OggDecoder
       // This is the important part
       read(ds, de);
       
-      // Edit current chunk
+      // Edit current chunk (Ok, there's probably a better way to write this chunk of code,
+      // but it kind of work really well and doesn't seem costly...)
       if ( (chunk.start == ds) && (chunk.end == de) )
       {
         // Chunk disappeared!
