@@ -14,6 +14,7 @@
 	<haxelib name="openfl" />
   <haxelib name="stats" />
   <haxelib name="multiloader" />
+  <haxelib name="trace-timer" />
 	<haxelib name="sound-decoder" />
 
 	<assets path="Assets" rename="assets" />

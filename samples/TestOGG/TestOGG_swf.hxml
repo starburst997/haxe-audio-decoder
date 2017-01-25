@@ -1,5 +1,6 @@
 -lib sound-decoder
 -lib multiloader
+-lib trace-timer
 -cp Source
 -swf Server/TestOGG.swf
 -swf-header 800:600:60:FFFFFF

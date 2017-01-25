@@ -1,9 +1,10 @@
 package;
 
-import haxe.io.Bytes;
-import haxe.io.BytesInput;
 import haxe.io.BytesOutput;
+
 import multiloader.MultiLoader;
+import sound.decoder.ogg.OggDecoder;
+import trace.TraceTimer;
 
 // Tests
 enum Tests
@@ -33,6 +34,8 @@ class TestOGG
   // Run some tests
   public function new()
   {
+    TraceTimer.activate();
+    
     trace("TestOGG Launch");
 
     var test = LoadURL1;
@@ -43,19 +46,6 @@ class TestOGG
     }
   }
   
-  // Enhance trace() with timing information
-  static inline function traceTimer()
-  {
-    var timer:Float = 0;
-    var oldTrace = haxe.Log.trace; // store old function
-    haxe.Log.trace = function(v, infos) 
-    {
-      
-      
-      oldTrace(v, infos);
-    };
-  }
-
   // Simply load a URL and do nothing else
   function loadURL1()
   {
@@ -68,12 +58,64 @@ class TestOGG
         
         // Create 
         raw = new BytesOutput();
-        ogg = new OggDecoder( bytes, raw );
+        ogg = new OggDecoder( bytes );
+        
+        // Test Random Read
+        trace(ogg.chunkString());
+        
+        for ( i in 0...500 )
+        {
+          var l = Std.int( Math.random() * ogg.length * 0.05 );
+          if ( l <= 0 ) l = 1;
+          
+          var start = Std.int( Math.random() * (ogg.length - l) );
+          var end = start + l;
+          
+          ogg.decode(start, end);
+          
+          //trace("T: " + ogg.chunkDebug(start, end));
+          trace("C: " + ogg.chunkString());
+        }
         
         trace("");
         
         // Read X samples
         //ogg.readSamples(0, 4000);
+        
+        trace("Read 4000 samples");
+      },
+      error: function(error)
+      {
+        trace("Error", error);
+      }
+    });
+  }
+  
+  // Simple read
+  function loadURL2()
+  {
+    MultiLoader.loadBytes(
+    { 
+      url: TEST1, 
+      complete: function(bytes)
+      {
+        trace("Downloading complete");
+        
+        // Create 
+        raw = new BytesOutput();
+        ogg = new OggDecoder( bytes );
+        
+        // Test Random Read
+        trace(ogg.chunkString());
+        
+        
+        
+        trace("");
+        
+        // Read X samples
+        //ogg.readSamples(0, 4000);
+        
+        trace("Read 4000 samples");
       },
       error: function(error)
       {
