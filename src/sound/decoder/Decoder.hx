@@ -62,6 +62,10 @@ private class BytesOutput extends haxe.io.Output
 
 /**
  * Abstract for MP3 / OGG Decoder
+ * 
+ * Basically, we want to decode chunk of the file at a time when needed,
+ * eventually having the whole file decoded and not decoding a chunk
+ * that has already been decoded.
  */
 class Decoder 
 {
@@ -196,13 +200,14 @@ class Decoder
     var n = length * channels, ival:Int;
     for ( i in 0...n )
     {
-      ival = Std.int(nextSample() * 0x8000);
+      /*ival = Std.int(nextSample() * 0x8000);
       if( ival > 0x7FFF ) ival = 0x7FFF;
       output.writeByte(ival & 0xFF);
-      output.writeByte((ival >>> 8) & 0xFF);
+      output.writeByte((ival >>> 8) & 0xFF);*/
       
-      // Could this work? Faster?
-      //output.writeInt16( nextSample() * 32767 );
+      // This works too, seems as fast if not faster, but maybe not on all target...
+      output.writeInt16( Std.int(nextSample() * 32767) );
+      //output.writeInt16( Std.int((Math.random()*2-1) * 32767) );
     }
     
     return output.getBytes();

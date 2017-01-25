@@ -1,5 +1,12 @@
 package;
 
+#if js
+import js.Browser;
+import js.html.Blob;
+import js.html.URL;
+#end
+
+import js.html.AnchorElement;
 import multiloader.MultiLoader;
 import sound.decoder.OggDecoder;
 import trace.TraceTimer;
@@ -150,8 +157,34 @@ class TestOGG
           var wav = ogg.getWAV();
           trace('Wav Decoded');
           
-          #if js
+          // Save File per target
+          #if openfl
+          // TODO
+          #elseif flash
+          // TODO
+          #elseif js
+          Browser.window.onclick = function()
+          {
+            Browser.window.onclick = null;
+            
+            var a = Browser.document.createAnchorElement();
+            var blob = new Blob([wav.getData()], {type: 'audio/wav'});
+            var url = URL.createObjectURL(blob);
+            
+            a.href = url;
+            a.download = 'test.wav';
+            Browser.document.body.appendChild(a);
+            
+            a.click();
+            
+            Browser.window.setTimeout(function()
+            {
+              Browser.document.body.removeChild(a);
+              URL.revokeObjectURL(url);  
+            }, 0);
+          };
           
+          trace('Click to save WAV');
           #end
         });
       },
