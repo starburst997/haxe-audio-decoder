@@ -1,12 +1,20 @@
 package;
 
-#if js
+#if openfl
+import openfl.events.MouseEvent;
+import openfl.net.FileReference;
+import openfl.Lib;
+#elseif flash
+import flash.events.MouseEvent;
+import flash.net.FileReference;
+import flash.Lib;
+#elseif js
 import js.Browser;
 import js.html.Blob;
 import js.html.URL;
+import js.html.AnchorElement;
 #end
 
-import js.html.AnchorElement;
 import multiloader.MultiLoader;
 import sound.decoder.OggDecoder;
 import trace.TraceTimer;
@@ -158,10 +166,12 @@ class TestOGG
           trace('Wav Decoded');
           
           // Save File per target
-          #if openfl
-          // TODO
-          #elseif flash
-          // TODO
+          #if (openfl || flash)
+          Lib.current.stage.addEventListener(MouseEvent.CLICK, function(e)
+          {
+            var fileRef:FileReference = new FileReference();
+            fileRef.save(wav.getData(), 'test.wav');
+          });
           #elseif js
           Browser.window.onclick = function()
           {
@@ -183,9 +193,9 @@ class TestOGG
               URL.revokeObjectURL(url);  
             }, 0);
           };
+          #end
           
           trace('Click to save WAV');
-          #end
         });
       },
       error: function(error)

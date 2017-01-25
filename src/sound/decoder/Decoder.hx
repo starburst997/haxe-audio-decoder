@@ -1,6 +1,7 @@
 package sound.decoder;
 
 import haxe.io.Bytes;
+import haxe.io.Output;
 
 // Chunk
 private typedef Chunk = 
@@ -13,50 +14,37 @@ private typedef Chunk =
   var previous:Chunk;
 };
 
-// Stolen from https://github.com/ncannasse/heaps/blob/master/hxd/snd/OggData.hx
-private class BytesOutput extends haxe.io.Output 
+// BytesOutput
+private class BytesOutput extends Output
 {
-	var bytes : haxe.io.Bytes;
-	var position : Int;
-	#if flash
-	var m : sound.decoder.Memory.MemoryReader;
-	#end
+	var bytes:Bytes;
+	var position:Int;
 
 	public function new( bytes:Bytes ) 
   {
     this.bytes = bytes;
-		#if flash
-		m = sound.decoder.Memory.select(bytes);
-		#end
 	}
 
-	public function done() {
-		#if flash
-		m.end();
-		#end
+	public function done() 
+  {
+		
 	}
 
-	public function setPosition( position:Int ) {
+	public function setPosition( position:Int ) 
+  {
 		this.position = position;
 	}
 
-	override function writeFloat(f) {
-		#if flash
-		m.wfloat(position, f);
-		#else
+	override function writeFloat(f) 
+  {
 		bytes.setFloat(position, f);
-		#end
 		position += 4;
 	}
 
-	override function writeInt16(i) {
-		#if flash
-		m.wb(position++, i >> 8);
-		m.wb(position++, i);
-		#else
+	override function writeInt16(i) 
+  {
 		bytes.setUInt16(position, i);
 		position += 2;
-		#end
 	}
 }
 
@@ -298,6 +286,12 @@ class Decoder
     
     // Read in one shot
     readAll( handler );
+  }
+  
+  // Decode remaining
+  public function decodeRemaining()
+  {
+    decode(0, length);
   }
   
   // Makes sure this range is decoded
