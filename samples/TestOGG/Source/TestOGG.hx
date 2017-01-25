@@ -1,7 +1,5 @@
 package;
 
-import haxe.io.BytesOutput;
-
 import multiloader.MultiLoader;
 import sound.decoder.ogg.OggDecoder;
 import trace.TraceTimer;
@@ -9,7 +7,9 @@ import trace.TraceTimer;
 // Tests
 enum Tests
 {
-  LoadURL1;
+  DebugChunk;
+  DebugSample;
+  DebugWAV;
 }
 
 /**
@@ -24,9 +24,6 @@ class TestOGG
   // Ogg File
   private var ogg:OggDecoder;
   
-  // Decoded Ogg File (16bit Samples / 2 Channels)
-  private var raw:BytesOutput;
-  
   // List of files
   public static inline var PATH:String = "./assets/";
   public static inline var TEST1:String = PATH + "test1.ogg";
@@ -38,16 +35,18 @@ class TestOGG
     
     trace("TestOGG Launch");
 
-    var test = LoadURL1;
+    var test = DebugWAV;
 
     switch(test)
     {
-      case LoadURL1: loadURL1();
+      case DebugChunk: debugChunk();
+      case DebugSample: debugSample();
+      case DebugWAV: debugWAV();
     }
   }
   
   // Simply load a URL and do nothing else
-  function loadURL1()
+  function debugChunk()
   {
     MultiLoader.loadBytes(
     { 
@@ -56,8 +55,7 @@ class TestOGG
       {
         trace("Downloading complete");
         
-        // Create 
-        raw = new BytesOutput();
+        // Create
         ogg = new OggDecoder( bytes );
         
         // Test Random Read
@@ -76,13 +74,6 @@ class TestOGG
           //trace("T: " + ogg.chunkDebug(start, end));
           trace("C: " + ogg.chunkString());
         }
-        
-        trace("");
-        
-        // Read X samples
-        //ogg.readSamples(0, 4000);
-        
-        trace("Read 4000 samples");
       },
       error: function(error)
       {
@@ -92,7 +83,7 @@ class TestOGG
   }
   
   // Simple read
-  function loadURL2()
+  function debugSample()
   {
     MultiLoader.loadBytes(
     { 
@@ -102,20 +93,60 @@ class TestOGG
         trace("Downloading complete");
         
         // Create 
-        raw = new BytesOutput();
         ogg = new OggDecoder( bytes );
         
-        // Test Random Read
-        trace(ogg.chunkString());
-        
-        
-        
+        // Read X samples
         trace("");
+        var start = 0;
+        var end = 200;
+        ogg.decode(start, end);
+        
+        trace('Read ${end - start} samples:');
+        
+        // Trace Bytes
+        var str = "";
+        var n = (end - start) + 10; // Add some padding, should be 0
+        for ( i in 0...n )
+        {
+          str = "";
+          for ( j in 0...ogg.channels )
+          {
+            str += (j == 0 ? "" : " / ") + ogg.getSample(i, j);
+          }
+          
+          trace( i, str );
+        }
+      },
+      error: function(error)
+      {
+        trace("Error", error);
+      }
+    });
+  }
+  
+  // Save back to WAV
+  function debugWAV()
+  {
+    MultiLoader.loadBytes(
+    { 
+      url: TEST1, 
+      complete: function(bytes)
+      {
+        trace("Downloading complete");
+        
+        // Create 
+        ogg = new OggDecoder( bytes );
         
         // Read X samples
-        //ogg.readSamples(0, 4000);
+        trace("");
+        var start = 0;
+        var end = ogg.length;
+        ogg.decode(start, end);
         
-        trace("Read 4000 samples");
+        trace('Read ${end - start} samples:');
+        
+        // Save WAV
+        
       },
       error: function(error)
       {

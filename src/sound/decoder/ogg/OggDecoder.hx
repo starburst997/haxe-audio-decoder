@@ -1,7 +1,6 @@
 package sound.decoder.ogg;
 
 import haxe.io.Bytes;
-import haxe.io.BytesOutput;
 
 import stb.format.vorbis.Reader;
 
@@ -16,6 +15,53 @@ private typedef Chunk =
   var previous:Chunk;
 };
 
+// Stolen from https://github.com/ncannasse/heaps/blob/master/hxd/snd/OggData.hx
+private class BytesOutput extends haxe.io.Output 
+{
+	var bytes : haxe.io.Bytes;
+	var position : Int;
+	#if flash
+	var m : hxd.impl.Memory.MemoryReader;
+	#end
+
+	public function new( bytes:Bytes ) 
+  {
+    this.bytes = bytes;
+		#if flash
+		m = hxd.impl.Memory.select(bytes);
+		#end
+	}
+
+	public function done() {
+		#if flash
+		m.end();
+		#end
+	}
+
+	public function setPosition( position:Int ) {
+		this.position = position;
+	}
+
+	override function writeFloat(f) {
+		#if flash
+		m.wfloat(position, f);
+		#else
+		bytes.setFloat(position, f);
+		#end
+		position += 4;
+	}
+
+	override function writeInt16(i) {
+		#if flash
+		m.wb(position++, i >> 8);
+		m.wb(position++, i);
+		#else
+		bytes.setUInt16(position, i);
+		position += 2;
+		#end
+	}
+}
+
 /**
  * Simple interface to stb_ogg_sound
  * 
@@ -25,11 +71,15 @@ private typedef Chunk =
  */
 class OggDecoder 
 {
+  // Performance
+  public static inline var USE_FLOAT:Bool = false;
+  
   // Stb OGG
   var reader:Reader;
   
   // Decoded Bytes in 16bit per sample
   public var decoded:Bytes;
+  private var output:BytesOutput;
   
   // Keep track of decoded chunk
   var chunks:Chunk;
@@ -38,6 +88,9 @@ class OggDecoder
   public var length:Int = 0;
   public var channels:Int = 2;
   public var sampleRate:Int = 44100;
+  
+  // Bytes per sample (16 Bits)
+  private var bps:Int = USE_FLOAT ? 4 : 2;
   
   // Constructor
   public function new( bytes:Bytes ) 
@@ -49,7 +102,8 @@ class OggDecoder
     sampleRate = reader.header.sampleRate;
     
     // Create Bytes big enough to hold the decoded bits
-    decoded = Bytes.alloc(length * 2 * channels);
+    decoded = Bytes.alloc(length * bps * channels);
+    output = new BytesOutput(decoded);
     
     // We now have one big non-decoded chunk
     chunks  = {
@@ -118,10 +172,50 @@ class OggDecoder
     return chunkString(str, chunk.next, n, m);
   }
   
-  // Read samples inside the OGG
-  public function read(start:Int, end:Int)
+  // Get a sample
+  public inline function getSample(pos:Int, channel:Int)
   {
-    // TODO !
+    if ( USE_FLOAT )
+    {
+      return getSampleF(pos, channel);
+    }
+    else
+    {
+      return getSample16(pos, channel);
+    }
+  }
+  
+  // 16 Bit
+  public inline function getSample16(pos:Int, channel:Int)
+  {
+    inline function sext16(v:Int) {
+      return (v & 0x8000) == 0 ? v : v | 0xFFFF0000;
+    }
+    
+    return sext16(decoded.getUInt16( ((pos * channels) << 1) + (channel << 1) )) / 0x8000;
+  }
+  
+  // Float
+  public inline function getSampleF(pos:Int, channel:Int)
+  {
+    return decoded.getFloat( ((pos * channels) << 2) + (channel << 2) );
+  }
+  
+  // Read samples inside the OGG
+  private function read(start:Int, end:Int)
+  {
+    // Start
+    reader.currentSample = start;
+    
+    // 16 Bits
+    output.setPosition( start * bps * channels );
+    
+    // Read into output
+    var n = reader.read(output, end - start, channels, sampleRate, USE_FLOAT);
+    output.done();
+    
+    // Debug
+    trace("Read", start, end, n);
   }
   
   // Makes sure this range is decoded
@@ -151,8 +245,6 @@ class OggDecoder
       
       // This is the important part
       read(ds, de);
-      
-      //trace("-----------------------------");
       
       // Edit current chunk
       if ( (chunk.start == ds) && (chunk.end == de) )
