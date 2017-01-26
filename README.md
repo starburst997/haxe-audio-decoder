@@ -1,5 +1,7 @@
-# haxe-sound-decoder
+# haxe-audio-decoder
 Library to provide an interface to decode MP3 / OGG.
+
+WIP but OGG is working
 
 OGG is using [haxe_stb_ogg_sound](https://github.com/motion-twin/haxe_stb_ogg_sound) (Motion Twin fork)
 

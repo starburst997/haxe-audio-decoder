@@ -16,9 +16,11 @@ import js.html.URL;
 import js.html.AnchorElement;
 #end
 
-import multiloader.MultiLoader;
-import sound.decoder.OggDecoder;
-import trace.TraceTimer;
+import file.load.FileLoad;
+import audio.decoder.OggDecoder;
+
+import statistics.Stats;
+import statistics.TraceTimer;
 
 // Tests
 enum Tests
@@ -67,7 +69,7 @@ class TestOGG
   // Simply load a URL and do nothing else
   function debugChunk()
   {
-    MultiLoader.loadBytes(
+    FileLoad.loadBytes(
     {
       url: TEST1,
       complete: function(bytes)
@@ -104,7 +106,7 @@ class TestOGG
   // Simple read
   function debugSample()
   {
-    MultiLoader.loadBytes(
+    FileLoad.loadBytes(
     {
       url: TEST1,
       complete: function(bytes)
@@ -149,7 +151,7 @@ class TestOGG
   // Save back to WAV
   function debugWAV()
   {
-    MultiLoader.loadBytes(
+    FileLoad.loadBytes(
     {
       url: TEST1,
       complete: function(bytes)

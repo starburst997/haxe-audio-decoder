@@ -13,9 +13,9 @@
 
 	<haxelib name="openfl" />
   <haxelib name="stats" />
-  <haxelib name="multiloader" />
   <haxelib name="trace-timer" />
-	<haxelib name="sound-decoder" />
+  <haxelib name="file-load" />
+	<haxelib name="audio-decoder" />
 
   <!--<haxeflag name="-dce" value="full" />-->
 

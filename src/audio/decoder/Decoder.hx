@@ -1,4 +1,4 @@
-package sound.decoder;
+package audio.decoder;
 
 import haxe.io.Bytes;
 import haxe.io.Output;

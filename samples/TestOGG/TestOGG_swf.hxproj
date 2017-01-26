@@ -28,10 +28,10 @@
   </build>
   <!-- haxelib libraries -->
   <haxelib>
-    <library name="sound-decoder" />
-    <library name="multiloader" />
+    <library name="audio-decoder" />
+    <library name="file-load" />
     <library name="trace-timer" />
-    <library name="stats" />
+    <library name="statistics" />
   </haxelib>
   <!-- Class files to compile (other referenced classes will automatically be included) -->
   <compileTargets>
