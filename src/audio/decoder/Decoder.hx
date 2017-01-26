@@ -17,35 +17,35 @@ private typedef Chunk =
 // BytesOutput
 private class BytesOutput extends Output
 {
-	var bytes:Bytes;
-	var position:Int;
+  var bytes:Bytes;
+  var position:Int;
 
-	public function new( bytes:Bytes )
+  public function new( bytes:Bytes )
   {
     this.bytes = bytes;
-	}
+  }
 
-	public function done()
+  public function done()
   {
 
-	}
+  }
 
-	public function setPosition( position:Int )
+  public function setPosition( position:Int )
   {
-		this.position = position;
-	}
+    this.position = position;
+  }
 
-	override function writeFloat(f)
+  override function writeFloat(f)
   {
-		bytes.setFloat(position, f);
-		position += 4;
-	}
+    bytes.setFloat(position, f);
+    position += 4;
+  }
 
-	override function writeInt16(i)
+  override function writeInt16(i)
   {
-		bytes.setUInt16(position, i);
-		position += 2;
-	}
+    bytes.setUInt16(position, i);
+    position += 2;
+  }
 }
 
 /**
@@ -94,7 +94,8 @@ class Decoder
     output = new BytesOutput(decoded);
 
     // We now have one big non-decoded chunk
-    chunks = {
+    chunks =
+    {
       decoded: false,
       start: 0,
       end: length,
@@ -106,7 +107,8 @@ class Decoder
   // Debug String
   public function chunkDebug(start:Int, end:Int)
   {
-    var first:Chunk = {
+    var first:Chunk =
+    {
       decoded: false,
       start: 0,
       end: start,
@@ -114,7 +116,8 @@ class Decoder
       previous: null
     };
 
-    var middle:Chunk = {
+    var middle:Chunk =
+    {
       decoded: true,
       start: start,
       end: end,
@@ -122,7 +125,8 @@ class Decoder
       previous: first
     };
 
-    var last:Chunk = {
+    var last:Chunk =
+    {
       decoded: false,
       start: end,
       end: length,
@@ -276,7 +280,8 @@ class Decoder
   public function decodeAll( handler:Void->Void = null )
   {
     // We now have one big decoded chunk
-    chunks = {
+    chunks =
+    {
       decoded: true,
       start: 0,
       end: length,
@@ -364,7 +369,8 @@ class Decoder
         if ( (ds > chunk.start) && (de < chunk.end) )
         {
           // Right in the middle so we got 3 chunk
-          chunk.next = {
+          chunk.next =
+          {
             decoded: true,
             start: ds,
             end: de,
@@ -372,7 +378,8 @@ class Decoder
             previous: chunk
           };
 
-          chunk.next.next = {
+          chunk.next.next =
+          {
             decoded: false,
             start: de,
             end: chunk.end,
@@ -395,7 +402,8 @@ class Decoder
           }
           else
           {
-            chunk.next = {
+            chunk.next =
+            {
               decoded: true,
               start: ds,
               end: de,
@@ -419,13 +427,14 @@ class Decoder
             }
             else
             {
-              chunk.next = {
+              chunk.next =
+              {
                 decoded: false,
                 start: de,
                 end: chunk.end,
                 next: next,
                 previous: chunk
-              }
+              };
 
               if ( next != null ) next.previous = chunk.next;
             }
