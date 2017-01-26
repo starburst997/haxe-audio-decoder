@@ -17,6 +17,8 @@
   <haxelib name="trace-timer" />
 	<haxelib name="sound-decoder" />
 
+  <!--<haxeflag name="-dce" value="full" />-->
+
 	<assets path="Assets" rename="assets" />
 
   <config:ios deployment="6.0" />

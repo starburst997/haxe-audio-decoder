@@ -1,6 +1,7 @@
 -lib sound-decoder
 -lib multiloader
 -lib trace-timer
+-lib stats
 -cp Source
 -js Server/js/TestOGG.js
 -main Main

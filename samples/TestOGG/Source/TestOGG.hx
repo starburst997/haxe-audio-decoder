@@ -1,6 +1,7 @@
 package;
 
 #if openfl
+import openfl.utils.ByteArray;
 import openfl.events.MouseEvent;
 import openfl.net.FileReference;
 import openfl.Lib;
@@ -36,9 +37,12 @@ enum Tests
  */
 class TestOGG
 {
+  // Stats
+  var stats:Stats = new Stats();
+
   // Ogg File
   private var ogg:OggDecoder;
-  
+
   // List of files
   public static inline var PATH:String = "./assets/";
   public static inline var TEST1:String = PATH + "test1.ogg";
@@ -47,7 +51,7 @@ class TestOGG
   public function new()
   {
     TraceTimer.activate();
-    
+
     trace("TestOGG Launch");
 
     var test = DebugWAV;
@@ -59,33 +63,33 @@ class TestOGG
       case DebugWAV: debugWAV();
     }
   }
-  
+
   // Simply load a URL and do nothing else
   function debugChunk()
   {
     MultiLoader.loadBytes(
-    { 
-      url: TEST1, 
+    {
+      url: TEST1,
       complete: function(bytes)
       {
         trace("Downloading complete");
-        
+
         // Create
         ogg = new OggDecoder( bytes );
-        
+
         // Test Random Read
         trace(ogg.chunkString());
-        
+
         for ( i in 0...500 )
         {
           var l = Std.int( Math.random() * ogg.length * 0.05 );
           if ( l <= 0 ) l = 1;
-          
+
           var start = Std.int( Math.random() * (ogg.length - l) );
           var end = start + l;
-          
+
           ogg.decode(start, end);
-          
+
           //trace("T: " + ogg.chunkDebug(start, end));
           trace("C: " + ogg.chunkString());
         }
@@ -96,32 +100,32 @@ class TestOGG
       }
     });
   }
-  
+
   // Simple read
   function debugSample()
   {
     MultiLoader.loadBytes(
-    { 
-      url: TEST1, 
+    {
+      url: TEST1,
       complete: function(bytes)
       {
         trace("Downloading complete");
-        
-        // Create 
+
+        // Create
         ogg = new OggDecoder( bytes );
-        
+
         // Read X samples
         trace("");
         var start = 0;
         var end = 200;
         ogg.decode(start, end);
-        
+
         trace('Read ${end - start} samples:');
-        
+
         // Trace Bytes
         var str = "";
         var n = (end - start) + 10; // Add some padding, should be 0
-        
+
         ogg.startSample(0);
         for ( i in 0...n )
         {
@@ -131,7 +135,7 @@ class TestOGG
             //str += (j == 0 ? "" : " / ") + ogg.getSample(i, j);
             str += (j == 0 ? "" : " / ") + ogg.nextSample();
           }
-          
+
           trace( i, str );
         }
       },
@@ -141,60 +145,64 @@ class TestOGG
       }
     });
   }
-  
+
   // Save back to WAV
   function debugWAV()
   {
     MultiLoader.loadBytes(
-    { 
-      url: TEST1, 
+    {
+      url: TEST1,
       complete: function(bytes)
       {
         trace("Downloading complete");
-        
-        // Create 
+
+        // Create
         ogg = new OggDecoder( bytes );
-        
+
         // Read X samples
         trace("");
         ogg.decodeAll(function()
         {
           trace('Read ${ogg.length} samples');
-          
+
           // Save WAV
           var wav = ogg.getWAV();
           trace('Wav Decoded');
-          
+
           // Save File per target
           #if (openfl || flash)
           Lib.current.stage.addEventListener(MouseEvent.CLICK, function(e)
           {
             var fileRef:FileReference = new FileReference();
+            #if openfl
+            fileRef.save(ByteArrayData.fromBytes(wav), 'test.wav');
+            #else
             fileRef.save(wav.getData(), 'test.wav');
+            #end
           });
           #elseif js
           Browser.window.onclick = function()
           {
             Browser.window.onclick = null;
-            
+
             var a = Browser.document.createAnchorElement();
             var blob = new Blob([wav.getData()], {type: 'audio/wav'});
             var url = URL.createObjectURL(blob);
-            
+
             a.href = url;
             a.download = 'test.wav';
             Browser.document.body.appendChild(a);
-            
+
             a.click();
-            
+
             Browser.window.setTimeout(function()
             {
               Browser.document.body.removeChild(a);
-              URL.revokeObjectURL(url);  
+              URL.revokeObjectURL(url);
             }, 0);
           };
           #end
-          
+
           trace('Click to save WAV');
         });
       },
