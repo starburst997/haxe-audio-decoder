@@ -302,6 +302,9 @@ class Decoder
   // Makes sure this range is decoded
   public function decode(start:Int, end:Int)
   {
+    if ( start < 0 ) start = 0;
+    if ( end > length ) end = length;
+    
     _decode(start, end, chunks);
   }
   private function _decode(start:Int, end:Int, chunk:Chunk)
