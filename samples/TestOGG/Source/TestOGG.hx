@@ -1,22 +1,7 @@
 package;
 
-#if openfl
-import openfl.utils.ByteArray;
-import openfl.events.MouseEvent;
-import openfl.net.FileReference;
-import openfl.Lib;
-#elseif flash
-import flash.events.MouseEvent;
-import flash.net.FileReference;
-import flash.Lib;
-#elseif js
-import js.Browser;
-import js.html.Blob;
-import js.html.URL;
-import js.html.AnchorElement;
-#end
-
 import file.load.FileLoad;
+import file.save.FileSave;
 import audio.decoder.OggDecoder;
 
 import statistics.Stats;
@@ -171,41 +156,7 @@ class TestOGG
           var wav = ogg.getWAV();
           trace('Wav Decoded');
 
-          // Save File per target
-          #if (openfl || flash)
-          Lib.current.stage.addEventListener(MouseEvent.CLICK, function(e)
-          {
-            var fileRef:FileReference = new FileReference();
-            #if openfl
-            fileRef.save(ByteArrayData.fromBytes(wav), 'test.wav');
-            #else
-            fileRef.save(wav.getData(), 'test.wav');
-            #end
-          });
-          #elseif js
-          Browser.window.onclick = function()
-          {
-            Browser.window.onclick = null;
-
-            var a = Browser.document.createAnchorElement();
-            var blob = new Blob([wav.getData()], {type: 'audio/wav'});
-            var url = URL.createObjectURL(blob);
-
-            a.href = url;
-            a.download = 'test.wav';
-            Browser.document.body.appendChild(a);
-
-            a.click();
-
-            Browser.window.setTimeout(function()
-            {
-              Browser.document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }, 0);
-          };
-          #end
-
-          trace('Click to save WAV');
+          FileSave.saveClickBytes(wav, 'test.wav', 'audio/wav');
         });
       },
       error: function(error)

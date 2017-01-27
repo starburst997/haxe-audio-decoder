@@ -12,9 +12,10 @@
 	<source path="Source" />
 
 	<haxelib name="openfl" />
-  <haxelib name="stats" />
+  <haxelib name="statistics" />
   <haxelib name="trace-timer" />
   <haxelib name="file-load" />
+  <haxelib name="file-save" />
 	<haxelib name="audio-decoder" />
 
   <!--<haxeflag name="-dce" value="full" />-->
