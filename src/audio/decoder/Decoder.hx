@@ -206,7 +206,7 @@ class Decoder
   }
 
   // Get a sample
-  public inline function getSample(pos:Int, channel:Int)
+  public inline function getSample(pos:Int, channel:Int = 0)
   {
     /*if ( USE_FLOAT )
     {
