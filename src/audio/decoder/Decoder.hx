@@ -1,5 +1,6 @@
 package audio.decoder;
 
+import haxe.ds.Vector;
 import haxe.io.Bytes;
 import haxe.io.Output;
 
@@ -15,14 +16,14 @@ private typedef Chunk =
 };
 
 // BytesOutput
-private class BytesOutput extends Output
+private class VectorOutput extends Output
 {
-  var bytes:Bytes;
-  var position:Int;
+  var vector:Vector<Float>;
+  var position:Int = 0;
 
-  public function new( bytes:Bytes )
+  public function new( vector:Vector<Float> )
   {
-    this.bytes = bytes;
+    this.vector = vector;
   }
 
   public function done()
@@ -35,17 +36,15 @@ private class BytesOutput extends Output
     this.position = position;
   }
 
-  override function writeFloat(f)
+  override function writeFloat(f:Float)
   {
-    bytes.setFloat(position, f);
-    position += 4;
+    vector[position++] = f;
   }
 
-  override function writeInt16(i)
+  /*override function writeInt16(i:Int)
   {
-    bytes.setUInt16(position, i);
-    position += 2;
-  }
+    vector[position++] = i;
+  }*/
 }
 
 /**
@@ -58,17 +57,17 @@ private class BytesOutput extends Output
 class Decoder
 {
   // Performance
-  #if decode_float
+  //#if decode_float
   public static inline var USE_FLOAT:Bool = true;
   public static inline var BPS:Int = 4;
-  #else
+  /*#else
   public static inline var USE_FLOAT:Bool = false;
   public static inline var BPS:Int = 2;
-  #end
+  #end*/
 
   // Decoded Bytes in 16bit per sample
-  public var decoded:Bytes;
-  private var output:BytesOutput;
+  public var decoded:Vector<Float>;
+  private var output:VectorOutput;
   private var position:Int = 0;
 
   // Keep track of decoded chunk (DLL)
@@ -90,8 +89,9 @@ class Decoder
     this.sampleRate = sampleRate;
 
     // Create Bytes big enough to hold the decoded bits
-    decoded = Bytes.alloc(length * BPS * channels);
-    output = new BytesOutput(decoded);
+    //decoded = Bytes.alloc(length * BPS * channels);
+    decoded = new Vector<Float>(length * channels);
+    output = new VectorOutput(decoded);
 
     // We now have one big non-decoded chunk
     chunks =
@@ -217,47 +217,53 @@ class Decoder
       return getSample16(pos, channel);
     }*/
 
-    #if decode_float
+    //#if decode_float
     return getSampleF(pos, channel);
-    #else
+    /*#else
     return getSample16(pos, channel);
-    #end
+    #end*/
   }
 
   // 16 Bit
-  private inline function sext16(v:Int)
+  /*private inline function sext16(v:Int)
   {
     return (v & 0x8000) == 0 ? v : v | 0xFFFF0000;
   }
   public inline function getSample16(pos:Int, channel:Int)
   {
-    return sext16(decoded.getUInt16( (pos * channels + channel) << 1 )) / 0x8000;
-  }
+    //return sext16(decoded.getUInt16( (pos * channels + channel) << 1 )) / 0x8000;
+    return sext16(decoded[ pos * channels + channel ]) / 0x8000;
+  }*/
 
   // Float
   public inline function getSampleF(pos:Int, channel:Int)
   {
-    return decoded.getFloat( (pos * channels + channel) << 2 );
+    //return decoded.getFloat( (pos * channels + channel) << 2 );
+    return decoded[ pos * channels + channel ];
   }
 
   // Start Sample
   public inline function startSample(pos:Int)
   {
-    #if decode_float
+    /*#if decode_float
     position = (pos * channels - 1) << 2;
     #else
     position = (pos * channels - 1) << 1;
-    #end
+    #end*/
+    
+    position = pos * channels - 1;
   }
 
   // Nest Sample
   public inline function nextSample()
   {
-    #if decode_float
+    return decoded[++position];
+    
+    /*#if decode_float
     return decoded.getFloat( position += 4 );
     #else
     return sext16(decoded.getUInt16( position += 2 )) / 0x8000;
-    #end
+    #end*/
   }
 
   // Read samples inside the decoder
