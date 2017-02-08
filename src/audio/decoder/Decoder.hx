@@ -2,7 +2,6 @@ package audio.decoder;
 
 import haxe.io.Bytes;
 import haxe.io.Output;
-import haxe.io.BytesOutput;
 
 // Chunk
 private typedef Chunk =
@@ -173,7 +172,7 @@ class Decoder
     var blockAlign = Std.int(channels * bitsPerSample / 8);
     var dataLength = length * channels * 2;
 
-    var output = new BytesOutput();
+    var output = new haxe.io.BytesOutput();
     output.bigEndian = false;
     output.writeString("RIFF");
     output.writeInt32(36 + dataLength);
