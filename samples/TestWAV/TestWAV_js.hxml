@@ -1,0 +1,9 @@
+-lib audio-decoder
+-lib file-load
+-lib file-save
+-lib trace-timer
+-lib statistics
+-cp Source
+-js Server/js/TestWAV.js
+-main Main
+

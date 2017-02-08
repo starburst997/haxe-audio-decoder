@@ -38,8 +38,9 @@ class OggDecoder extends Decoder
 
     // Start
     reader.currentSample = start;
-    output.setPosition( start * Decoder.BPS * channels );
-
+    //output.setPosition( start * Decoder.BPS * channels );
+    output.setPosition( start * channels );
+    
     // Read into output
     var l = end - start;
     while ( l > 0 )

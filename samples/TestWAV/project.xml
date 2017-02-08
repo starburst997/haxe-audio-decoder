@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+
+	<meta title="Test WAV" package="com.failsafegames.testwav" version="1.0.0" company="FailSafe Games" />
+
+  <window width="800" height="600" background="#FFFFFF" fps="61" />
+  <window width="0" height="0" if="mobile" />
+  <window width="0" height="0" if="html5" />
+
+	<app main="MainOpenFL" path="Export" file="TestWAV" />
+
+	<source path="Source" />
+
+	<haxelib name="openfl" />
+  <haxelib name="statistics" />
+  <haxelib name="trace-timer" />
+  <haxelib name="file-load" />
+  <haxelib name="file-save" />
+	<haxelib name="audio-decoder" />
+
+  <!--<haxeflag name="-dce" value="full" />-->
+
+	<assets path="Assets" rename="assets" />
+
+  <config:ios deployment="6.0" />
+
+</project>

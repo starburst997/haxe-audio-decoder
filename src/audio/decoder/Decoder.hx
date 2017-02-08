@@ -92,7 +92,7 @@ class Decoder
     //decoded = Bytes.alloc(length * BPS * channels);
     decoded = new Vector<Float>(length * channels);
     output = new VectorOutput(decoded);
-
+    
     // We now have one big non-decoded chunk
     chunks =
     {
@@ -190,12 +190,17 @@ class Decoder
     // Read Samples one after another (testing actual float conversion also)
     startSample(0);
     var n = length * channels, ival:Int;
+    
+    trace("Writing", n, "Samples");
+    
     for ( i in 0...n )
     {
       /*ival = Std.int(nextSample() * 0x8000);
       if( ival > 0x7FFF ) ival = 0x7FFF;
       output.writeByte(ival & 0xFF);
       output.writeByte((ival >>> 8) & 0xFF);*/
+      
+      trace(i, position);
 
       // This works too, seems as fast if not faster, but maybe not on all target...
       output.writeInt16( Std.int(nextSample() * 32767) );
