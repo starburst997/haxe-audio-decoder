@@ -37,6 +37,7 @@ class TestWAV
   public static inline var TEST3:String = PATH + "c.wav";
   public static inline var TEST4:String = PATH + "d.wav";
   public static inline var TEST5:String = PATH + "e.wav";
+  public static inline var TEST6:String = PATH + "f.wav";
 
   // Run some tests
   public function new()
@@ -142,7 +143,7 @@ class TestWAV
   {
     FileLoad.loadBytes(
     {
-      url: TEST4,
+      url: TEST6,
       complete: function(bytes)
       {
         trace("Downloading complete");

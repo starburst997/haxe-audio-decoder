@@ -34,7 +34,7 @@ class OggDecoder extends Decoder
   // Read samples inside the OGG
   private override function read(start:Int, end:Int)
   {
-    trace("");
+    //trace("");
 
     // Start
     reader.currentSample = start;
@@ -54,6 +54,6 @@ class OggDecoder extends Decoder
     output.done();
 
     // Debug
-    trace("Read", start, end);
+    //trace("Read", start, end);
   }
 }

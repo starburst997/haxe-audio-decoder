@@ -1,7 +1,7 @@
 package audio.decoder;
 
-import haxe.ds.Vector;
 import haxe.io.Bytes;
+import haxe.io.Float32Array;
 import haxe.io.Output;
 
 // Chunk
@@ -16,14 +16,14 @@ private typedef Chunk =
 };
 
 // BytesOutput
-private class VectorOutput extends Output
+private class ArrayOutput extends Output
 {
-  var vector:Vector<Float>;
+  var array:Float32Array;
   var position:Int = 0;
 
-  public function new( vector:Vector<Float> )
+  public function new( array:Float32Array )
   {
-    this.vector = vector;
+    this.array = array;
   }
 
   public function done()
@@ -38,12 +38,12 @@ private class VectorOutput extends Output
 
   override function writeFloat(f:Float)
   {
-    vector[position++] = f;
+    array[position++] = f;
   }
 
   /*override function writeInt16(i:Int)
   {
-    vector[position++] = i;
+    array[position++] = i;
   }*/
 }
 
@@ -66,8 +66,8 @@ class Decoder
   #end*/
 
   // Decoded Bytes in 16bit per sample
-  public var decoded:Vector<Float>;
-  private var output:VectorOutput;
+  public var decoded:Float32Array;
+  private var output:ArrayOutput;
   private var position:Int = 0;
 
   // Keep track of decoded chunk (DLL)
@@ -90,8 +90,8 @@ class Decoder
 
     // Create Bytes big enough to hold the decoded bits
     //decoded = Bytes.alloc(length * BPS * channels);
-    decoded = new Vector<Float>(length * channels);
-    output = new VectorOutput(decoded);
+    decoded = new Float32Array(length * channels);
+    output = new ArrayOutput(decoded);
     
     // We now have one big non-decoded chunk
     chunks =
@@ -200,8 +200,6 @@ class Decoder
       output.writeByte(ival & 0xFF);
       output.writeByte((ival >>> 8) & 0xFF);*/
       
-      trace(i, position);
-
       // This works too, seems as fast if not faster, but maybe not on all target...
       output.writeInt16( Std.int(nextSample() * 32767) );
       //output.writeInt16( Std.int((Math.random()*2-1) * 32767) );
