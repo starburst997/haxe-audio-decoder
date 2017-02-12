@@ -3,7 +3,8 @@ package audio.decoder;
 import haxe.io.Bytes;
 import haxe.io.BytesInput;
 
-enum WAVEFormat {
+enum WAVEFormat 
+{
   WF_PCM;
 }
 

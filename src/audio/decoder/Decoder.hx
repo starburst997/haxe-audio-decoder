@@ -5,6 +5,8 @@ import haxe.io.Output;
 
 #if audio16
 import lime.utils.Int16Array;
+#elseif (js && separate_channels)
+import js.html.Float32Array;
 #else
 import haxe.io.Float32Array;
 #end
@@ -111,6 +113,7 @@ class Decoder
 
     // Create Bytes big enough to hold the decoded bits
     //decoded = Bytes.alloc(length * BPS * channels);
+    
     #if audio16
     decoded = new Int16Array(length * channels);
     #else
@@ -221,19 +224,11 @@ class Decoder
     
     for ( i in 0...n )
     {
-      /*ival = Std.int(nextSample() * 0x8000);
-      if( ival > 0x7FFF ) ival = 0x7FFF;
-      output.writeByte(ival & 0xFF);
-      output.writeByte((ival >>> 8) & 0xFF);*/
-      
-      // This works too, seems as fast if not faster, but maybe not on all target...
       #if audio16
       output.writeInt16( nextSample() );
       #else
       output.writeInt16( Std.int(nextSample() * 32767) );
       #end
-      
-      //output.writeInt16( Std.int((Math.random()*2-1) * 32767) );
     }
 
     return output.getBytes();
@@ -242,49 +237,12 @@ class Decoder
   // Get a sample
   public inline function getSample(pos:Int, channel:Int = 0)
   {
-    /*if ( USE_FLOAT )
-    {
-      return getSampleF(pos, channel);
-    }
-    else
-    {
-      return getSample16(pos, channel);
-    }*/
-
-    //#if decode_float
-    return getSampleF(pos, channel);
-    /*#else
-    return getSample16(pos, channel);
-    #end*/
-  }
-
-  // 16 Bit
-  /*private inline function sext16(v:Int)
-  {
-    return (v & 0x8000) == 0 ? v : v | 0xFFFF0000;
-  }
-  public inline function getSample16(pos:Int, channel:Int)
-  {
-    //return sext16(decoded.getUInt16( (pos * channels + channel) << 1 )) / 0x8000;
-    return sext16(decoded[ pos * channels + channel ]) / 0x8000;
-  }*/
-
-  // Float
-  public inline function getSampleF(pos:Int, channel:Int)
-  {
-    //return decoded.getFloat( (pos * channels + channel) << 2 );
     return decoded[ pos * channels + channel ];
   }
-
+  
   // Start Sample
   public inline function startSample(pos:Int)
   {
-    /*#if decode_float
-    position = (pos * channels - 1) << 2;
-    #else
-    position = (pos * channels - 1) << 1;
-    #end*/
-    
     position = pos * channels - 1;
   }
 
@@ -292,12 +250,6 @@ class Decoder
   public inline function nextSample()
   {
     return decoded[++position];
-    
-    /*#if decode_float
-    return decoded.getFloat( position += 4 );
-    #else
-    return sext16(decoded.getUInt16( position += 2 )) / 0x8000;
-    #end*/
   }
 
   // Read samples inside the decoder
@@ -307,7 +259,7 @@ class Decoder
   }
 
   // Read all samples
-  private function readAll( handler:Void->Void = null )
+  private function readAll(handler:Void->Void = null)
   {
     // Simply call read, but this could be override for specific target like JS with AudioContext
     read(0, length);
@@ -317,7 +269,7 @@ class Decoder
   }
 
   // Decode all the samples, in one shot
-  public function decodeAll( handler:Void->Void = null )
+  public function decodeAll(handler:Void->Void = null)
   {
     // We now have one big decoded chunk
     chunks =
