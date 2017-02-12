@@ -3,6 +3,7 @@ package;
 import file.load.FileLoad;
 import file.save.FileSave;
 import audio.decoder.OggDecoder;
+import haxe.Timer;
 
 import statistics.Stats;
 import statistics.TraceTimer;
@@ -13,6 +14,7 @@ enum Tests
   DebugChunk;
   DebugSample;
   DebugWAV;
+  DebugHeader;
 }
 
 /**
@@ -45,12 +47,35 @@ class TestOGG
 
     switch(test)
     {
+      case DebugHeader: debugHeader();
       case DebugChunk: debugChunk();
       case DebugSample: debugSample();
       case DebugWAV: debugWAV();
     }
   }
 
+  // Debug Header
+  function debugHeader()
+  {
+    FileLoad.loadBytes(
+    {
+      url: TEST1,
+      complete: function(bytes)
+      {
+        trace("Downloading complete");
+        
+        // Create
+        ogg = new OggDecoder( bytes );
+        
+        trace(ogg.length, ogg.channels, ogg.sampleRate);
+      },
+      error: function(error)
+      {
+        trace("Error", error);
+      }
+    });
+  }
+  
   // Simply load a URL and do nothing else
   function debugChunk()
   {
@@ -148,6 +173,7 @@ class TestOGG
 
         // Read X samples
         trace("");
+        
         ogg.decodeAll(function()
         {
           trace('Read ${ogg.length} samples');
@@ -158,6 +184,26 @@ class TestOGG
 
           FileSave.saveClickBytes(wav, 'test.wav', 'audio/wav');
         });
+        
+        /*var timer = new Timer(2000);
+        timer.run = function()
+        {
+          timer.stop();
+          
+          trace("START");
+          
+          // Maybe file is slow...
+          ogg.decodeAll(function()
+          {
+            trace('Read ${ogg.length} samples');
+
+            // Save WAV
+            var wav = ogg.getWAV();
+            trace('Wav Decoded');
+
+            FileSave.saveClickBytes(wav, 'test.wav', 'audio/wav');
+          });
+        };*/
       },
       error: function(error)
       {
