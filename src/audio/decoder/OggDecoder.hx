@@ -8,6 +8,9 @@ import lime.utils.UInt8Array;
 import lime.utils.Int16Array;
 import lime.utils.Float32Array;
 import lime.media.codecs.vorbis.VorbisFile;
+#elseif (js && webaudio)
+import js.html.audio.AudioContext;
+import js.html.audio.OfflineAudioContext;
 #else
 import stb.format.vorbis.Reader;
 #end
@@ -18,6 +21,8 @@ import stb.format.vorbis.Reader;
  * Progressively decode the OGG by requesting range
  *
  * https://github.com/motion-twin/haxe_stb_ogg_sound (Motion Twin fork)
+ * 
+ * Compile flag "oggFloat" doesn't seems to works
  */
 class OggDecoder extends Decoder
 {
@@ -27,7 +32,9 @@ class OggDecoder extends Decoder
   private static inline var MAX_SAMPLE = 65536;
   private static inline var STREAM_BUFFER_SIZE = 48000;
   
-  #if lime_vorbis
+  #if (js && webaudio)
+  
+  #elseif lime_vorbis
   var reader:VorbisFile;
   #else
   var reader:Reader;
@@ -43,7 +50,11 @@ class OggDecoder extends Decoder
     
     this.bytes = bytes;
     
-    #if lime_vorbis
+    #if (js && webaudio)
+    
+    super(1, 2, 44100);
+    
+    #elseif lime_vorbis
     //reader = VorbisFile.fromFile("assets/test1.ogg");
     reader = VorbisFile.fromBytes( bytes );
     //reader.streams();
@@ -66,8 +77,12 @@ class OggDecoder extends Decoder
   private function readVorbisFileBuffer( length:Int )
   {
 		//var buffer = new UInt8Array( length );
+    
+    #if !oggFloat
     var buffer = new Int16Array( Std.int(length / 2) );
-		//var buffer = new Float32Array( length );
+    #else
+		var buffer = new Float32Array( Std.int(length / 4) );
+    #end
     
     var read = 0, total = 0, readMax;
 		
@@ -80,9 +95,12 @@ class OggDecoder extends Decoder
 				readMax = length - total;
 			}
 			
+      #if !oggFloat
 			read = reader.read( buffer.buffer, total, readMax );
-			//read = reader.readFloat( buffer.buffer, readMax );
-			
+      #else
+			read = reader.readFloat( buffer.buffer, readMax );
+			#end
+      
 			if (read > 0) 
       {
 				total += read;
@@ -100,14 +118,28 @@ class OggDecoder extends Decoder
   // Read samples inside the OGG
   private override function read(start:Int, end:Int)
   {
-    #if lime_vorbis
+    #if (js && webaudio)
+    
+    // Nothing to do here since we can only decode whole file at once
+    
+    #elseif lime_vorbis
     var l = end - start, stop = false;
     var position = 0, buffer = null;
     
+    #if !oggFloat
     var dataLength = Std.int( l * channels * 2 ); // 16 bits == 2 bytes
+    #else
+    var dataLength = Std.int( l * channels * 4 );
+    #end
     
     reader.pcmSeek( Int64.ofInt(start) );
     output.setPosition( start * channels );
+    
+    #if !oggFloat
+    var p = Std.int( start * channels * 2 );
+    #else
+    var p = Std.int( start * channels * 4 );
+    #end
     
     while ( !stop )
     {
@@ -127,11 +159,32 @@ class OggDecoder extends Decoder
         break;
       }
       
+      #if audio16
+      
+      #if !oggFloat
+      output.array.buffer.blit(p, buffer.buffer, 0, buffer.length << 1);
+      p += buffer.length << 1;
+      #else
       for ( i in 0...buffer.length )
       {
-        output.writeFloat( buffer[i] / 32768 );
+        output.writeInt16( Std.int(buffer[i] * 32767.0) );
+      }
+      #end
+      
+      #else
+      
+      #if !oggFloat
+      for ( i in 0...buffer.length )
+      {
+        output.writeFloat( buffer[i] / 32768.0 );
         //output.writeFloat( buffer[i] );
       }
+      #else
+      output.array.buffer.blit(p, buffer.buffer, 0, buffer.length << 2);
+      p += buffer.length << 2;
+      #end
+      
+      #end
     }
     
     output.done();
@@ -161,4 +214,12 @@ class OggDecoder extends Decoder
     
     #end
   }
+  
+  // WebAudio Decoder
+  #if (js && webaudio)
+  
+  // TODO: But I feel like this will go nowhere, seems kind of slow for very small file?
+  // And no way to extract a small part of it :(
+  
+  #end
 }

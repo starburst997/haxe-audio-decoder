@@ -117,18 +117,49 @@ class WavDecoder extends Decoder
     var l = (end - start) * channels;
     
     // Based on bits per sample
+    #if audio16
+    if ( byte == 2 ) // 16 bit
+    {
+      // Should be faster to blit?
+      output.array.buffer.blit( output.position << 1, bytes, position, l << 1 );
+      
+      /*for ( i in 0...l )
+      {
+        output.writeInt16( sext16(bytes.getUInt16(position += 2)) );
+      }*/
+    }
+    else if ( byte == 1 ) // 8 bit
+    {
+      for ( i in 0...l )
+      {
+        output.writeInt16( Std.int(((bytes.get(++position) - 127.0) / 128.0) * 32767.0) );
+      }
+    }
+    else if ( byte == 4 ) // 32 bit
+    {
+      // Test ???
+      for ( i in 0...l )
+      {
+        output.writeInt16( Std.int(bytes.getFloat(position += 4) * 32767.0) );
+      }
+    }
+    else
+    {
+      // 24 bit ??? 64 bit ???
+    }
+    #else
     if ( byte == 2 ) // 16 bit
     {
       for ( i in 0...l )
       {
-        output.writeFloat( sext16(bytes.getUInt16(position += 2)) / 0x8000 );
+        output.writeFloat( sext16(bytes.getUInt16(position += 2)) / 32768.0 );
       }
     }
     else if ( byte == 1 ) // 8 bit
     {
       for ( i in 0...l )
       {
-        output.writeFloat( (bytes.get(++position) - 127) / 128 );
+        output.writeFloat( (bytes.get(++position) - 127.0) / 128.0 );
       }
     }
     else if ( byte == 4 ) // 32 bit
@@ -143,6 +174,7 @@ class WavDecoder extends Decoder
     {
       // 24 bit ??? 64 bit ???
     }
+    #end
     
     output.done();
 

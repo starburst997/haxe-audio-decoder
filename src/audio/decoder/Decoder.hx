@@ -1,8 +1,13 @@
 package audio.decoder;
 
 import haxe.io.Bytes;
-import haxe.io.Float32Array;
 import haxe.io.Output;
+
+#if audio16
+import lime.utils.Int16Array;
+#else
+import haxe.io.Float32Array;
+#end
 
 // Chunk
 private typedef Chunk =
@@ -18,10 +23,19 @@ private typedef Chunk =
 // BytesOutput
 private class ArrayOutput extends Output
 {
-  var array:Float32Array;
-  var position:Int = 0;
+  #if audio16
+  public var array:Int16Array;
+  #else
+  public var array:Float32Array;
+  #end
+  
+  public var position:Int = 0;
 
+  #if audio16
+  public function new( array:Int16Array )
+  #else
   public function new( array:Float32Array )
+  #end
   {
     this.array = array;
   }
@@ -35,16 +49,18 @@ private class ArrayOutput extends Output
   {
     this.position = position;
   }
-
+  
+  #if audio16
+  override function writeInt16(i:Int)
+  {
+    array[position++] = i;
+  }
+  #else
   override function writeFloat(f:Float)
   {
     array[position++] = f;
   }
-
-  /*override function writeInt16(i:Int)
-  {
-    array[position++] = i;
-  }*/
+  #end
 }
 
 /**
@@ -57,16 +73,21 @@ private class ArrayOutput extends Output
 class Decoder
 {
   // Performance
-  //#if decode_float
-  public static inline var USE_FLOAT:Bool = true;
-  public static inline var BPS:Int = 4;
-  /*#else
+  #if audio16
   public static inline var USE_FLOAT:Bool = false;
   public static inline var BPS:Int = 2;
-  #end*/
+  #else
+  public static inline var USE_FLOAT:Bool = true;
+  public static inline var BPS:Int = 4;
+  #end
 
-  // Decoded Bytes in 16bit per sample
+  // Decoded Bytes per sample
+  #if audio16
+  public var decoded:Int16Array;
+  #else
   public var decoded:Float32Array;
+  #end
+  
   private var output:ArrayOutput;
   private var position:Int = 0;
 
@@ -90,7 +111,12 @@ class Decoder
 
     // Create Bytes big enough to hold the decoded bits
     //decoded = Bytes.alloc(length * BPS * channels);
+    #if audio16
+    decoded = new Int16Array(length * channels);
+    #else
     decoded = new Float32Array(length * channels);
+    #end
+    
     output = new ArrayOutput(decoded);
     
     // We now have one big non-decoded chunk
@@ -201,7 +227,12 @@ class Decoder
       output.writeByte((ival >>> 8) & 0xFF);*/
       
       // This works too, seems as fast if not faster, but maybe not on all target...
+      #if audio16
+      output.writeInt16( nextSample() );
+      #else
       output.writeInt16( Std.int(nextSample() * 32767) );
+      #end
+      
       //output.writeInt16( Std.int((Math.random()*2-1) * 32767) );
     }
 

@@ -17,6 +17,8 @@
   <haxelib name="file-load" />
   <haxelib name="file-save" />
 	<haxelib name="audio-decoder" />
+  
+  <haxedef name="audio16" if="desktop" />
 
   <!--<haxeflag name="-dce" value="full" />-->
 
