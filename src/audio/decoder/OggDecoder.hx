@@ -51,18 +51,23 @@ class OggDecoder extends Decoder
   var bytes:Bytes = null;
   
   // Constructor
-  public function new( bytes:Bytes )
+  public function new( bytes:Bytes, delay:Bool = false )
+  {
+    this.bytes = bytes;
+    
+    super(delay);
+  }
+  
+  override function create()
   {
     trace("");
-    
-    this.bytes = bytes;
     
     #if js
     // Knowing some info about the OGG file is absolutely necessary (maybe find a smaller footprint library for this...)
     reader = Reader.openFromBytes(bytes);
     trace("OGG Reader finished");
     
-    super( reader.totalSample, reader.header.channel, reader.header.sampleRate );
+    _process( reader.totalSample, reader.header.channel, reader.header.sampleRate );
     
     // Use Browser DecodeAudioData, at first it seems like CPU usage is down as well as Chrome's "violation"
     if ( hasDecodeAudioData() )
@@ -78,13 +83,13 @@ class OggDecoder extends Decoder
     var info = reader.info();
     trace("OGG Reader finished");
     
-    super( Int64.toInt(reader.pcmTotal()), info.channels, info.rate );
+    _process( Int64.toInt(reader.pcmTotal()), info.channels, info.rate );
     
     #else
     reader = Reader.openFromBytes(bytes);
     trace("OGG Reader finished");
     
-    super( reader.totalSample, reader.header.channel, reader.header.sampleRate );
+    _process( reader.totalSample, reader.header.channel, reader.header.sampleRate );
     #end
   }
   
@@ -164,6 +169,10 @@ class OggDecoder extends Decoder
         
         return true;
       }
+      /*else
+      {
+        trace("WOWOWHWOHWOHWOHWOHWOHOHOHHOOHOHHOHOOHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
+      }*/
       
       return false;
     }
@@ -285,8 +294,21 @@ class OggDecoder extends Decoder
   
   #if js
   // Interesting way to decode samples with WebAudio... Need to do some tests...
-  function decodeWebAudio()
+  private static var web_pending:Array<OggDecoder> = []; // One decoder at a time...
+  private static var waiting:Bool = false;
+  public function decodeWebAudio()
   {
+    #if wait_webaudio
+    if ( waiting )
+    {
+      trace("!!!!! WAITING");
+      web_pending.push( this );
+      return;
+    }
+    
+    waiting = true;
+    #end
+    
     // Use Browser DecodeAudioData
     offlineAudio = new OfflineAudioContext(channels, length, sampleRate );
     
@@ -311,6 +333,16 @@ class OggDecoder extends Decoder
           {
             decodedChannels.push( renderedBuffer.getChannelData(channel) );
           }
+          
+          #if wait_webaudio
+          waiting = false;
+          
+          if ( web_pending.length > 0 )
+          {
+            var decoder = web_pending.shift();
+            decoder.decodeWebAudio();
+          }
+          #end
         } );
       } );
     }
@@ -332,6 +364,16 @@ class OggDecoder extends Decoder
           {
             decodedChannels.push( renderedBuffer.getChannelData(channel) );
           }
+          
+          #if wait_webaudio
+          waiting = false;
+          
+          if ( web_pending.length > 0 )
+          {
+            var decoder = web_pending.shift();
+            decoder.decodeWebAudio();
+          }
+          #end
         };
         
         offlineAudio.startRendering();

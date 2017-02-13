@@ -37,18 +37,23 @@ class Mp3Decoder extends Decoder
   var bytes:Bytes = null;
 
   // Constructor
-  public function new( bytes:Bytes )
+  public function new( bytes:Bytes, delay:Bool = false )
+  {
+    this.bytes = bytes;
+    
+    super(delay);
+  }
+  
+  override function create()
   {
     trace("");
-
-    this.bytes = bytes;
-
+    
     #if js
     // Knowing some info about the MP3 file is absolutely necessary (maybe find a smaller footprint library for this...)
     var info = Mp3Utils.getInfo(bytes);
     trace("MP3 Reader finished");
     
-    super( info.length, info.channels, info.sampleRate );
+    _process( info.length, info.channels, info.sampleRate );
 
     // Use Browser DecodeAudioData, at first it seems like CPU usage is down as well as Chrome's "violation"
     if ( hasDecodeAudioData() )
@@ -59,11 +64,11 @@ class Mp3Decoder extends Decoder
     // Use Sound.extract()
     trace("MP3 not implemented yet!!!");
 
-    super( 2, 2, 44100 );
+    _process( 2, 2, 44100 );
     #else
     trace("MP3 not implemented yet!!!");
 
-    super( 2, 2, 44100 );
+    _process( 2, 2, 44100 );
     #end
   }
 

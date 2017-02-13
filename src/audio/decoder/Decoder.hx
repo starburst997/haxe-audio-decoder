@@ -104,8 +104,36 @@ class Decoder
   // Bytes per sample (16 Bits or Float 32 Bits)
   private var bps:Int = BPS;
 
+  // Process
+  public var pending:Bool = false;
+  public var processed:Bool = false;
+  
   // Constructor
-  public function new( length:Int, channels:Int, sampleRate:Int )
+  public function new( delay:Bool = false )
+  {
+    if ( !delay )
+    {
+      process();
+    }
+  }
+  
+  public function process()
+  {
+    if ( !processed )
+    {
+      processed = true;
+      pending = true;
+      
+      create();
+    }
+  }
+  
+  function create()
+  {
+    // Override me
+  }
+  
+  function _process( length:Int, channels:Int, sampleRate:Int )
   {
     this.length = length;
     this.channels = channels;

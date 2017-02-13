@@ -26,11 +26,16 @@ class WavDecoder extends Decoder
 	}
   
   // Constructor
-  public function new( bytes:Bytes )
+  public function new( bytes:Bytes, delay:Bool = false )
+  {
+    this.bytes = bytes;
+    
+    super(delay);
+  }
+  
+  override function create()
   {
     trace("");
-    
-    this.bytes = bytes;
     
     // Read WAV Headers (https://github.com/HaxeFoundation/format/blob/master/format/wav/Reader.hx)
     var i = new BytesInput( bytes );
@@ -97,7 +102,7 @@ class WavDecoder extends Decoder
     trace("WAV", Std.int(datalen / channels / byte), datalen, byte, channels, sampleRate);
     
     // Create Decoder
-    super( Std.int(datalen / channels / byte), channels, samplingRate );
+    _process( Std.int(datalen / channels / byte), channels, samplingRate );
   }
   
   private inline function sext16(v:Int)
