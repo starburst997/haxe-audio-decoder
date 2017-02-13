@@ -2,12 +2,13 @@
 	"name" : "audio-decoder",
 	"url" : "https://github.com/starburst997/haxe-audio-decoder",
 	"license" : "MIT",
-  "description" : "Library to provide an interface to decode MP3 / OGG.",
+  "description" : "Library to provide an interface to decode MP3 / OGG / WAV.",
   "version" : "0.0.1",
   "classPath": "src/",
 	"releasenote" : "",
 	"contributors" : ["starburst997"],
 	"dependencies" : {
-    "stb_ogg_sound": ""
+    "stb_ogg_sound": "",
+    "format": ""
   }
 }
