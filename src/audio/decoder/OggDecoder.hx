@@ -8,7 +8,8 @@ import lime.utils.UInt8Array;
 import lime.utils.Int16Array;
 import lime.utils.Float32Array;
 import lime.media.codecs.vorbis.VorbisFile;
-#elseif (js && webaudio)
+#elseif js
+import js.html.Audio;
 import js.html.audio.AudioContext;
 import js.html.audio.OfflineAudioContext;
 import stb.format.vorbis.Reader;
@@ -24,6 +25,8 @@ import stb.format.vorbis.Reader;
  * https://github.com/motion-twin/haxe_stb_ogg_sound (Motion Twin fork)
  * 
  * Compile flag "oggFloat" doesn't seems to works
+ * 
+ * Will need some major cleanup, mostly experimenting right now...
  */
 class OggDecoder extends Decoder
 {
@@ -33,10 +36,11 @@ class OggDecoder extends Decoder
   private static inline var MAX_SAMPLE = 65536;
   private static inline var STREAM_BUFFER_SIZE = 48000;
   
-  #if (js && webaudio)
+  #if js
   static var onlineAudio:AudioContext = new AudioContext();
   var offlineAudio:OfflineAudioContext;
   var decodedChannels:Array<js.html.Float32Array> = [];
+  var reader:Reader;
   #elseif lime_vorbis
   var reader:VorbisFile;
   #else
@@ -53,16 +57,19 @@ class OggDecoder extends Decoder
     
     this.bytes = bytes;
     
-    #if (js && webaudio)
+    #if js
     // Knowing some info about the OGG file is absolutely necessary (maybe find a smaller footprint library for this...)
-    var reader = Reader.openFromBytes(bytes);
+    reader = Reader.openFromBytes(bytes);
     trace("OGG Reader finished");
     
     super( reader.totalSample, reader.header.channel, reader.header.sampleRate );
     
     // Use Browser DecodeAudioData, at first it seems like CPU usage is down as well as Chrome's "violation"
-    decodeWebAudio();
-    
+    if ( hasDecodeAudioData() )
+    {
+      decodeWebAudio();
+      reader = null;
+    }
     #elseif lime_vorbis
     //reader = VorbisFile.fromFile("assets/test1.ogg");
     reader = VorbisFile.fromBytes( bytes );
@@ -127,37 +134,59 @@ class OggDecoder extends Decoder
   // Read samples inside the OGG
   private override function read(start:Int, end:Int):Bool
   {
-    #if (js && webaudio)
+    #if js
     
-    // Blit decoded output
-    
-    if ( decodedChannels.length > 0 )
+    if ( hasDecodeAudioData() )
     {
-      var buffer:js.html.Float32Array;
-      if ( channels == 2 )
+      // Blit decoded output
+      if ( decodedChannels.length > 0 )
       {
-        for ( i in start...end )
+        var buffer:js.html.Float32Array;
+        if ( channels == 2 )
         {
-          decoded[(i << 1)] = decodedChannels[0][i];
-          decoded[(i << 1) + 1] = decodedChannels[1][i];
+          for ( i in start...end )
+          {
+            decoded[(i << 1)] = decodedChannels[0][i];
+            decoded[(i << 1) + 1] = decodedChannels[1][i];
+          }
         }
-      }
-      else if ( channels == 1 )
-      {
-        for ( i in start...end )
+        else if ( channels == 1 )
         {
-          decoded[i] = decodedChannels[0][i];
+          for ( i in start...end )
+          {
+            decoded[i] = decodedChannels[0][i];
+          }
         }
-      }
-      else
-      {
-        // Not supported
+        else
+        {
+          // Not supported
+        }
+        
+        return true;
       }
       
+      return false;
+    }
+    else
+    {
+      // Start
+      reader.currentSample = start;
+      //output.setPosition( start * Decoder.BPS * channels );
+      output.setPosition( start * channels );
+      
+      // Read into output
+      var l = end - start;
+      while ( l > 0 )
+      {
+        var n = reader.read(output, l > MAX_SAMPLE ? MAX_SAMPLE : l, channels, sampleRate, Decoder.USE_FLOAT);
+        if (n == 0) { break; }
+        l -= MAX_SAMPLE;
+      }
+
+      //var n = reader.read(output, end - start, channels, sampleRate, USE_FLOAT);
+      output.done();
       return true;
     }
-    
-    return false;
     
     #elseif lime_vorbis
     var l = end - start, stop = false;
@@ -254,33 +283,101 @@ class OggDecoder extends Decoder
     #end
   }
   
-  #if (js && webaudio)
+  #if js
   // Interesting way to decode samples with WebAudio... Need to do some tests...
   function decodeWebAudio()
   {
-    // Use Browser DecodeAudioData, sadly, doesn't seem very fast...
+    // Use Browser DecodeAudioData
     offlineAudio = new OfflineAudioContext(channels, length, sampleRate );
     
     var source = offlineAudio.createBufferSource();
     
     var start = Date.now().getTime();
     
-    onlineAudio.decodeAudioData( bytes.getData(), function(buffer) 
+    // For some weird reason, Promise Based seems faster...
+    if ( hasPromise() )
     {
-      source.buffer = buffer;
-      source.connect(offlineAudio.destination);
-      source.start();
-      
-      offlineAudio.startRendering().then( function( renderedBuffer ) 
+      onlineAudio.decodeAudioData( bytes.getData() ).then( function(buffer) 
       {
-        trace('Rendering completed successfully!!', Date.now().getTime() - start );
+        source.buffer = buffer;
+        source.connect(offlineAudio.destination);
+        source.start();
         
-        for ( channel in 0...channels )
+        offlineAudio.startRendering().then( function( renderedBuffer ) 
         {
-          decodedChannels.push( renderedBuffer.getChannelData(channel) );
-        }
+          trace('Rendering completed successfully!!', Date.now().getTime() - start );
+          
+          for ( channel in 0...channels )
+          {
+            decodedChannels.push( renderedBuffer.getChannelData(channel) );
+          }
+        } );
       } );
-    } );
+    }
+    else
+    {
+      // No promise :(
+      onlineAudio.decodeAudioData( bytes.getData(), function(buffer) 
+      {
+        source.buffer = buffer;
+        source.connect(offlineAudio.destination);
+        source.start();
+        
+        offlineAudio.oncomplete = function(e) 
+        {
+          var renderedBuffer = e.renderedBuffer;
+          trace('Rendering completed successfully!!', Date.now().getTime() - start );
+          
+          for ( channel in 0...channels )
+          {
+            decodedChannels.push( renderedBuffer.getChannelData(channel) );
+          }
+        };
+        
+        offlineAudio.startRendering();
+      } );
+    }
+  }
+  
+  // Check if we can use decodeAudioData
+  static var _hasDecodeAudioData = 0;
+  function hasDecodeAudioData()
+  {
+    if ( _hasDecodeAudioData > 0 ) return _hasDecodeAudioData == 1;
+    
+    if ( untyped __typeof__(onlineAudio.decodeAudioData) == "function" )
+    {
+      trace("WE HAVE DECODE AUDIO!!!!!!!");
+      
+      // Check OGG Vorbis support
+      var support = new Audio().canPlayType('audio/ogg; codecs="vorbis"');
+      trace("OGG Vorbis Support", support);
+      if ( support == 'probably' )
+      {
+        _hasDecodeAudioData = 1;
+        return true;
+      }
+    }
+    
+    _hasDecodeAudioData = 2;
+    return false;
+  }
+  
+  // Check if we have a promise based browser
+  static var _hasPromise = 0;
+  function hasPromise()
+  {
+    if ( _hasPromise > 0 ) return _hasPromise == 1;
+    
+    if ( untyped __js__('typeof Promise !== "undefined" && Promise.toString().indexOf("[native code]") !== -1') )
+    {
+      trace("WE HAVE PROMISE!!!!!!!");
+      _hasPromise = 1;
+      return true;
+    }
+    
+    _hasPromise = 2;
+    return false;
   }
   #end
 }
