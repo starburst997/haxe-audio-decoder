@@ -253,9 +253,10 @@ class Decoder
   }
 
   // Read samples inside the decoder
-  private function read(start:Int, end:Int)
+  private function read(start:Int, end:Int):Bool
   {
     // Override me ;)
+    return false;
   }
 
   // Read all samples
@@ -320,7 +321,7 @@ class Decoder
       if ( chunk.end < end ) de = chunk.end;
 
       // This is the important part
-      read(ds, de);
+      if ( !read(ds, de) ) return; // Skip if we can't read
 
       // Edit current chunk (Ok, there's probably a better way to write this chunk of code,
       // but it kind of work really well and doesn't seem costly...)

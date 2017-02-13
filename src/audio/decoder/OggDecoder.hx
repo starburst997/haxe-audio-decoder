@@ -11,6 +11,7 @@ import lime.media.codecs.vorbis.VorbisFile;
 #elseif (js && webaudio)
 import js.html.audio.AudioContext;
 import js.html.audio.OfflineAudioContext;
+import stb.format.vorbis.Reader;
 #else
 import stb.format.vorbis.Reader;
 #end
@@ -33,7 +34,9 @@ class OggDecoder extends Decoder
   private static inline var STREAM_BUFFER_SIZE = 48000;
   
   #if (js && webaudio)
-  
+  static var onlineAudio:AudioContext = new AudioContext();
+  var offlineAudio:OfflineAudioContext;
+  var decodedChannels:Array<js.html.Float32Array> = [];
   #elseif lime_vorbis
   var reader:VorbisFile;
   #else
@@ -51,8 +54,14 @@ class OggDecoder extends Decoder
     this.bytes = bytes;
     
     #if (js && webaudio)
+    // Knowing some info about the OGG file is absolutely necessary (maybe find a smaller footprint library for this...)
+    var reader = Reader.openFromBytes(bytes);
+    trace("OGG Reader finished");
     
-    super(1, 2, 44100);
+    super( reader.totalSample, reader.header.channel, reader.header.sampleRate );
+    
+    // Use Browser DecodeAudioData, at first it seems like CPU usage is down as well as Chrome's "violation"
+    decodeWebAudio();
     
     #elseif lime_vorbis
     //reader = VorbisFile.fromFile("assets/test1.ogg");
@@ -60,16 +69,16 @@ class OggDecoder extends Decoder
     //reader.streams();
     
     var info = reader.info();
+    trace("OGG Reader finished");
     
     super( Int64.toInt(reader.pcmTotal()), info.channels, info.rate );
     
     #else
     reader = Reader.openFromBytes(bytes);
-    super( reader.totalSample, reader.header.channel, reader.header.sampleRate );
-    
-    #end
-    
     trace("OGG Reader finished");
+    
+    super( reader.totalSample, reader.header.channel, reader.header.sampleRate );
+    #end
   }
   
   #if lime_vorbis
@@ -116,11 +125,39 @@ class OggDecoder extends Decoder
   #end
   
   // Read samples inside the OGG
-  private override function read(start:Int, end:Int)
+  private override function read(start:Int, end:Int):Bool
   {
     #if (js && webaudio)
     
-    // Nothing to do here since we can only decode whole file at once
+    // Blit decoded output
+    
+    if ( decodedChannels.length > 0 )
+    {
+      var buffer:js.html.Float32Array;
+      if ( channels == 2 )
+      {
+        for ( i in start...end )
+        {
+          decoded[(i << 1)] = decodedChannels[0][i];
+          decoded[(i << 1) + 1] = decodedChannels[1][i];
+        }
+      }
+      else if ( channels == 1 )
+      {
+        for ( i in start...end )
+        {
+          decoded[i] = decodedChannels[0][i];
+        }
+      }
+      else
+      {
+        // Not supported
+      }
+      
+      return true;
+    }
+    
+    return false;
     
     #elseif lime_vorbis
     var l = end - start, stop = false;
@@ -188,6 +225,7 @@ class OggDecoder extends Decoder
     }
     
     output.done();
+    return true;
     
     #else
     //trace("");
@@ -208,6 +246,7 @@ class OggDecoder extends Decoder
 
     //var n = reader.read(output, end - start, channels, sampleRate, USE_FLOAT);
     output.done();
+    return true;
 
     // Debug
     //trace("Read", start, end);
@@ -215,11 +254,33 @@ class OggDecoder extends Decoder
     #end
   }
   
-  // WebAudio Decoder
   #if (js && webaudio)
-  
-  // TODO: But I feel like this will go nowhere, seems kind of slow for very small file?
-  // And no way to extract a small part of it :(
-  
+  // Interesting way to decode samples with WebAudio... Need to do some tests...
+  function decodeWebAudio()
+  {
+    // Use Browser DecodeAudioData, sadly, doesn't seem very fast...
+    offlineAudio = new OfflineAudioContext(channels, length, sampleRate );
+    
+    var source = offlineAudio.createBufferSource();
+    
+    var start = Date.now().getTime();
+    
+    onlineAudio.decodeAudioData( bytes.getData(), function(buffer) 
+    {
+      source.buffer = buffer;
+      source.connect(offlineAudio.destination);
+      source.start();
+      
+      offlineAudio.startRendering().then( function( renderedBuffer ) 
+      {
+        trace('Rendering completed successfully!!', Date.now().getTime() - start );
+        
+        for ( channel in 0...channels )
+        {
+          decodedChannels.push( renderedBuffer.getChannelData(channel) );
+        }
+      } );
+    } );
+  }
   #end
 }

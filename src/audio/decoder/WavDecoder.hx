@@ -106,7 +106,7 @@ class WavDecoder extends Decoder
   }
   
   // Read samples inside the WAV
-  private override function read(start:Int, end:Int)
+  private override function read(start:Int, end:Int):Bool
   {
     //trace("");
 
@@ -178,6 +178,7 @@ class WavDecoder extends Decoder
     #end
     
     output.done();
+    return true;
 
     // Debug
     //trace("Read", start, end);
