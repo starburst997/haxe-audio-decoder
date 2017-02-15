@@ -11,6 +11,12 @@ import js.html.Float32Array;
 import haxe.io.Float32Array;
 #end
 
+#if js
+import browser.BrowserDetect;
+import js.html.audio.AudioContext;
+import js.html.audio.OfflineAudioContext;
+#end
+
 // Chunk
 private typedef Chunk =
 {
@@ -66,14 +72,35 @@ private class ArrayOutput extends Output
 }
 
 /**
- * Abstract for MP3 / OGG Decoder
+ * Abstract for WAV / MP3 / OGG Decoder
  *
  * Basically, we want to decode chunk of the file at a time when needed,
  * eventually having the whole file decoded and not decoding a chunk
  * that has already been decoded.
+ * 
+ * TODO: Once all relevant bytes are decoded, have a "clean" function called 
+ * to clear unused bytes, decoder stuff, etc. since it is "completely" decoded...
  */
 class Decoder
 {
+  // WebAudio
+  #if js
+  static var onlineAudio(get, null):AudioContext;
+  static function get_onlineAudio():AudioContext
+  {
+    if ( onlineAudio == null ) onlineAudio = new AudioContext();
+    return onlineAudio;
+  }
+  var decodeStarted:Bool = false;
+  var offlineAudio:OfflineAudioContext;
+  var decodedChannels:Array<js.html.Float32Array> = [];
+  
+  #if wait_webaudio
+  private static var web_pending:Array<Decoder> = []; // One decoder at a time...
+  private static var waiting:Bool = false;
+  #end
+  #end
+  
   // Performance
   #if audio16
   public static inline var USE_FLOAT:Bool = false;
@@ -93,6 +120,9 @@ class Decoder
   private var output:ArrayOutput;
   private var position:Int = 0;
 
+  // Keep encoded bytes
+  var bytes:Bytes = null;
+  
   // Keep track of decoded chunk (DLL)
   var chunks:Chunk;
 
@@ -109,8 +139,10 @@ class Decoder
   public var processed:Bool = false;
   
   // Constructor
-  public function new( delay:Bool = false )
+  public function new( bytes:Bytes, delay:Bool = false )
   {
+    this.bytes = bytes;
+    
     if ( !delay )
     {
       process();
@@ -140,8 +172,6 @@ class Decoder
     this.sampleRate = sampleRate;
 
     // Create Bytes big enough to hold the decoded bits
-    //decoded = Bytes.alloc(length * BPS * channels);
-    
     #if audio16
     decoded = new Int16Array(length * channels);
     #else
@@ -284,7 +314,41 @@ class Decoder
   private function read(start:Int, end:Int):Bool
   {
     // Override me ;)
+    
+    #if js
+    // Blit decoded output
+    if ( decodedChannels.length > 0 )
+    {
+      var buffer:js.html.Float32Array;
+      if ( channels == 2 )
+      {
+        for ( i in start...end )
+        {
+          decoded[(i << 1)] = decodedChannels[0][i];
+          decoded[(i << 1) + 1] = decodedChannels[1][i];
+        }
+      }
+      else if ( channels == 1 )
+      {
+        for ( i in start...end )
+        {
+          decoded[i] = decodedChannels[0][i];
+        }
+      }
+      else
+      {
+        // Not supported
+      }
+
+      return true;
+    }
+    /*else
+    {
+      trace("Not decoded yet...");
+    }*/
+
     return false;
+    #end
   }
 
   // Read all samples
@@ -482,4 +546,100 @@ class Decoder
       _decode( start, end, next );
     }
   }
+  
+  #if js
+  // Interesting way to decode samples with WebAudio... Need to do some tests...
+  public function decodeWebAudio()
+  {
+    if ( decodeStarted ) return;
+    
+    #if wait_webaudio // wait_audio doesn't seems to help at all
+    if ( waiting )
+    {
+      //trace("!!!!! WAITING");
+      web_pending.push( this );
+      return;
+    }
+
+    waiting = true;
+    #end
+    
+    decodeStarted = true;
+    
+    // Use Browser DecodeAudioData
+    offlineAudio = new OfflineAudioContext(channels, length, sampleRate );
+    
+    var source = offlineAudio.createBufferSource();
+    
+    var start = Date.now().getTime();
+    
+    // For some weird reason, Promise Based seems faster...
+    if ( BrowserDetect.hasPromise() )
+    {
+      onlineAudio.decodeAudioData( bytes.getData() ).then( function(buffer)
+      {
+        source.buffer = buffer;
+        source.connect(offlineAudio.destination);
+        source.start();
+
+        offlineAudio.startRendering().then( function( renderedBuffer )
+        {
+          //trace('Rendering completed successfully!!', Date.now().getTime() - start );
+          
+          bytes = null;
+          
+          for ( channel in 0...channels )
+          {
+            decodedChannels.push( renderedBuffer.getChannelData(channel) );
+          }
+
+          #if wait_webaudio
+          waiting = false;
+
+          if ( web_pending.length > 0 )
+          {
+            var decoder = web_pending.shift();
+            decoder.decodeWebAudio();
+          }
+          #end
+        } );
+      } );
+    }
+    else
+    {
+      // No promise :(
+      onlineAudio.decodeAudioData( bytes.getData(), function(buffer)
+      {
+        source.buffer = buffer;
+        source.connect(offlineAudio.destination);
+        source.start();
+
+        offlineAudio.oncomplete = function(e)
+        {
+          var renderedBuffer = e.renderedBuffer;
+          //trace('Rendering completed successfully!!', Date.now().getTime() - start );
+          
+          bytes = null;
+          
+          for ( channel in 0...channels )
+          {
+            decodedChannels.push( renderedBuffer.getChannelData(channel) );
+          }
+
+          #if wait_webaudio
+          waiting = false;
+
+          if ( web_pending.length > 0 )
+          {
+            var decoder = web_pending.shift();
+            decoder.decodeWebAudio();
+          }
+          #end
+        };
+
+        offlineAudio.startRendering();
+      } );
+    }
+  }
+  #end
 }

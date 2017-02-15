@@ -15,7 +15,6 @@ class WavDecoder extends Decoder
 {
   var startData:Int = 0;
   var byte:Int = 2;
-  var bytes:Bytes = null;
   
   inline function readInt(i) {
 		#if haxe3
@@ -28,9 +27,7 @@ class WavDecoder extends Decoder
   // Constructor
   public function new( bytes:Bytes, delay:Bool = false )
   {
-    this.bytes = bytes;
-    
-    super(delay);
+    super( bytes, delay );
   }
   
   override function create()
@@ -95,11 +92,9 @@ class WavDecoder extends Decoder
 		
     startData = i.position;
     
-    trace("WAV Reader finished");
-
     byte = Std.int(bitsPerSample / 8);
     
-    trace("WAV", Std.int(datalen / channels / byte), datalen, byte, channels, sampleRate);
+    //trace("WAV", byte == 1 ? "8 BIT" : byte == 2 ? "16 BIT" : "24 BIT?", channels, sampleRate);
     
     // Create Decoder
     _process( Std.int(datalen / channels / byte), channels, samplingRate );
@@ -113,8 +108,6 @@ class WavDecoder extends Decoder
   // Read samples inside the WAV
   private override function read(start:Int, end:Int):Bool
   {
-    //trace("");
-
     // Start
     var position = startData + (start * channels * byte) - byte;
     output.setPosition( start * channels );
@@ -138,7 +131,8 @@ class WavDecoder extends Decoder
     {
       for ( i in 0...l )
       {
-        output.writeInt16( Std.int(((bytes.get(++position) - 127.0) / 128.0) * 32767.0) );
+        output.writeInt16( Std.int(((bytes.get(++position) - 128.0) / 128.0) * 32767.0) );
+        //output.writeInt16( (bytes.get(++position) - 0x80) << 8 );
       }
     }
     else if ( byte == 4 ) // 32 bit
@@ -165,7 +159,7 @@ class WavDecoder extends Decoder
     {
       for ( i in 0...l )
       {
-        output.writeFloat( (bytes.get(++position) - 127.0) / 128.0 );
+        output.writeFloat( (bytes.get(++position) - 128.0) / 128.0 );
       }
     }
     else if ( byte == 4 ) // 32 bit
@@ -184,8 +178,5 @@ class WavDecoder extends Decoder
     
     output.done();
     return true;
-
-    // Debug
-    //trace("Read", start, end);
   }
 }
