@@ -4,7 +4,11 @@ import haxe.io.Bytes;
 import haxe.io.Output;
 
 #if audio16
+#if js
+import js.html.Int16Array;
+#else
 import lime.utils.Int16Array;
+#end
 #elseif (js && separate_channels)
 import js.html.Float32Array;
 #else
@@ -317,6 +321,8 @@ class Decoder
     
     #if js
     // Blit decoded output
+    // TODO: Save decoded channels as is and call another function from SoundSource ????
+    // Would probably be marginally faster... But try!!!
     if ( decodedChannels.length > 0 )
     {
       var buffer:js.html.Float32Array;
@@ -324,15 +330,24 @@ class Decoder
       {
         for ( i in start...end )
         {
+          #if audio16
+          decoded[(i << 1)] = Std.int(decodedChannels[0][i] * 32767);
+          decoded[(i << 1) + 1] = Std.int(decodedChannels[1][i] * 32767);
+          #else
           decoded[(i << 1)] = decodedChannels[0][i];
           decoded[(i << 1) + 1] = decodedChannels[1][i];
+          #end
         }
       }
       else if ( channels == 1 )
       {
         for ( i in start...end )
         {
+          #if audio16
+          decoded[i] = Std.int(decodedChannels[0][i] * 32767);
+          #else
           decoded[i] = decodedChannels[0][i];
+          #end
         }
       }
       else

@@ -94,7 +94,7 @@ class WavDecoder extends Decoder
     
     byte = Std.int(bitsPerSample / 8);
     
-    //trace("WAV", byte == 1 ? "8 BIT" : byte == 2 ? "16 BIT" : "24 BIT?", channels, sampleRate);
+    trace("WAV", byte == 1 ? "8 BIT" : byte == 2 ? "16 BIT" : "24 BIT?", channels, sampleRate);
     
     // Create Decoder
     _process( Std.int(datalen / channels / byte), channels, samplingRate );
@@ -120,12 +120,14 @@ class WavDecoder extends Decoder
     if ( byte == 2 ) // 16 bit
     {
       // Should be faster to blit?
+      #if !js
       output.array.buffer.blit( output.position << 1, bytes, position, l << 1 );
-      
-      /*for ( i in 0...l )
+      #else
+      for ( i in 0...l )
       {
         output.writeInt16( sext16(bytes.getUInt16(position += 2)) );
-      }*/
+      }
+      #end
     }
     else if ( byte == 1 ) // 8 bit
     {
