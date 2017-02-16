@@ -105,6 +105,15 @@ class WavDecoder extends Decoder
     return (v & 0x8000) == 0 ? v : v | 0xFFFF0000;
   }
   
+  private inline function int16( ch1:Int, ch2:Int ):Int
+  {
+    var val = ((ch2 << 8) | ch1);
+
+    return
+      ((val & 0x8000) != 0) ?
+        ( val - 0x10000 ) : ( val );
+  }
+  
   // Read samples inside the WAV
   private override function read(start:Int, end:Int):Bool
   {
@@ -123,6 +132,7 @@ class WavDecoder extends Decoder
       #if !js
       output.array.buffer.blit( output.position << 1, bytes, position, l << 1 );
       #else
+      //position += byte;
       for ( i in 0...l )
       {
         output.writeInt16( sext16(bytes.getUInt16(position += 2)) );
@@ -134,7 +144,7 @@ class WavDecoder extends Decoder
       for ( i in 0...l )
       {
         output.writeInt16( Std.int(((bytes.get(++position) - 128.0) / 128.0) * 32767.0) );
-        //output.writeInt16( (bytes.get(++position) - 0x80) << 8 );
+        //output.writeInt16( (bytes.get(++position) - 0x80) << 8 ); // TODO: Probably a lot faster, test this!
       }
     }
     else if ( byte == 4 ) // 32 bit
@@ -166,7 +176,7 @@ class WavDecoder extends Decoder
     }
     else if ( byte == 4 ) // 32 bit
     {
-      // Test ???
+      // Test ??? (blit???)
       for ( i in 0...l )
       {
         output.writeFloat( bytes.getFloat(position += 4) );
