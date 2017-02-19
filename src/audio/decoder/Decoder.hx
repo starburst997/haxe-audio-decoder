@@ -319,6 +319,8 @@ class Decoder
   {
     // Override me ;)
     
+    return false;
+    
     #if js
     // Blit decoded output
     // TODO: Save decoded channels as is and call another function from SoundSource ????
