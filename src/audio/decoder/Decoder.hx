@@ -331,8 +331,8 @@ class Decoder
         for ( i in start...end )
         {
           #if audio16
-          decoded[(i << 1)] = Std.int(decodedChannels[0][i] * 32767);
-          decoded[(i << 1) + 1] = Std.int(decodedChannels[1][i] * 32767);
+          decoded[(i << 1)] = Std.int(decodedChannels[0][i] * 32767.0);
+          decoded[(i << 1) + 1] = Std.int(decodedChannels[1][i] * 32767.0);
           #else
           decoded[(i << 1)] = decodedChannels[0][i];
           decoded[(i << 1) + 1] = decodedChannels[1][i];
@@ -344,7 +344,7 @@ class Decoder
         for ( i in start...end )
         {
           #if audio16
-          decoded[i] = Std.int(decodedChannels[0][i] * 32767);
+          decoded[i] = Std.int(decodedChannels[0][i] * 32767.0);
           #else
           decoded[i] = decodedChannels[0][i];
           #end
