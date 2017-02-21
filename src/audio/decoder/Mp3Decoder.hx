@@ -100,7 +100,7 @@ private class Mp3Utils extends format.mp3.Reader
       case SR_12000: 12000;
       case SR_11025: 11025;
       case SR_8000: 8000;
-      default: 441000;
+      default: 44100;
     };
     
     try {

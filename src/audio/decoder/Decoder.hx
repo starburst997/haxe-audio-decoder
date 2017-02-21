@@ -289,7 +289,7 @@ class Decoder
       #if audio16
       output.writeInt16( nextSample() );
       #else
-      output.writeInt16( Std.int(nextSample() * 32767) );
+      output.writeInt16( Std.int(nextSample() * 32767.0) );
       #end
     }
 
