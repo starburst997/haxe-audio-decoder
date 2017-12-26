@@ -1,4 +1,7 @@
 # haxe-audio-decoder
+
+DEVELOPMENT HAS MOVE TO HERE: https://github.com/notessimo/audio-decoder
+
 Library to provide an interface to decode MP3 / OGG.
 
 WIP but OGG is working
